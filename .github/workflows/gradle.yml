@@ -190,7 +190,7 @@ jobs:
                       }
                   }
                   val infoText = TextView(this).apply {
-                      text = "\nKaise Use Karein:\n1. Gemini API Key save karein.\n2. Dono permissions ON karein.\n3. Screen ke upar Floating AI Bar aa jayega.\n4. Usmein bolkar ya likhkar koi bhi kaam batayein!"
+                      text = "\nActive Multi-Models:\n• gemini-3.5-flash-lite\n• gemini-3.8-flash\n• gemini-3.7-flash\n• gemini-3.6-flash\n• gemini-3.5-flash\n• gemini-3-flash-preview\n• gemini-2.5-flash\n• gemini-2.5-flash-lite\n\n(Ek model ki limit khatam hone par app khud agle model par switch ho jayega!)"
                       setTextColor(Color.LTGRAY)
                       textSize = 14f
                   }
@@ -244,6 +244,19 @@ jobs:
               private var currentGoal = ""
               private val history = mutableListOf<String>()
 
+              private val modelList = listOf(
+                  "gemini-3.5-flash-lite",
+                  "gemini-3.8-flash",
+                  "gemini-3.7-flash",
+                  "gemini-3.6-flash",
+                  "gemini-3.5-flash",
+                  "gemini-3-flash-preview",
+                  "gemini-2.5-flash-lite",
+                  "gemini-2.5-flash",
+                  "gemini-1.5-flash"
+              )
+              private var currentModelIndex = 0
+
               override fun onServiceConnected() {
                   super.onServiceConnected()
                   createFloatingBar()
@@ -265,7 +278,7 @@ jobs:
                       setPadding(24, 24, 24, 24)
                   }
                   statusTv = TextView(this).apply {
-                      text = "🤖 AI Ready: Kya kaam karna hai?"
+                      text = "🤖 AI Ready (Multi-Model): Kya kaam karna hai?"
                       setTextColor(Color.parseColor("#4ADE80"))
                       textSize = 13f
                   }
@@ -316,13 +329,22 @@ jobs:
 
                   scope.launch {
                       while (isRunning) {
+                          val activeModel = modelList[currentModelIndex]
                           statusTv.setTextColor(Color.parseColor("#60A5FA"))
-                          statusTv.text = "🔍 Screen dekh aur soch raha hoon..."
+                          statusTv.text = "🔍 [$activeModel] Soch raha hoon..."
                           val screenData = readScreenElements()
                           val decision = askGeminiBrain(currentGoal, screenData)
                           if (!isRunning) break
 
                           val action = decision.optString("action", "wait")
+                          if (action == "all_limits_exhausted") {
+                              statusTv.setTextColor(Color.parseColor("#FBBF24"))
+                              statusTv.text = "⏳ Saare models busy hain: 12 sec ruk kar phir chalu kar raha hoon..."
+                              delay(12000)
+                              continue
+                          }
+
+                          val usedModel = decision.optString("used_model", activeModel)
                           val reason = decision.optString("reason", "")
                           val msg = decision.optString("message", "")
                           history.add("Action: $action ($reason)")
@@ -332,14 +354,14 @@ jobs:
                               "click" -> {
                                   val x = decision.optInt("x", 500)
                                   val y = decision.optInt("y", 500)
-                                  statusTv.text = "👆 Click: $reason"
+                                  statusTv.text = "👆 [$usedModel] Click: $reason"
                                   performTap(x.toFloat(), y.toFloat())
                               }
                               "type" -> {
                                   val x = decision.optInt("x", -1)
                                   val y = decision.optInt("y", -1)
                                   val text = decision.optString("text", "")
-                                  statusTv.text = "⌨️ Typing: $text"
+                                  statusTv.text = "⌨️ [$usedModel] Typing: $text"
                                   if (x > 0 && y > 0) {
                                       performTap(x.toFloat(), y.toFloat())
                                       delay(800)
@@ -348,19 +370,19 @@ jobs:
                               }
                               "open_app" -> {
                                   val appName = decision.optString("app_name", "")
-                                  statusTv.text = "🚀 App khol raha hoon: $appName"
+                                  statusTv.text = "🚀 [$usedModel] App: $appName"
                                   openAppByName(appName)
                               }
                               "scroll_down" -> {
-                                  statusTv.text = "📜 Niche scroll kar raha hoon..."
+                                  statusTv.text = "📜 [$usedModel] Niche scroll..."
                                   performScrollDown()
                               }
                               "back" -> {
-                                  statusTv.text = "🔙 Back ja raha hoon..."
+                                  statusTv.text = "🔙 [$usedModel] Back..."
                                   performGlobalAction(GLOBAL_ACTION_BACK)
                               }
                               "home" -> {
-                                  statusTv.text = "🏠 Home screen..."
+                                  statusTv.text = "🏠 [$usedModel] Home..."
                                   performGlobalAction(GLOBAL_ACTION_HOME)
                               }
                               "ask_user" -> {
@@ -374,7 +396,7 @@ jobs:
                                   break
                               }
                           }
-                          delay(3000)
+                          delay(4500)
                       }
                   }
               }
@@ -461,30 +483,54 @@ jobs:
                       {"action": "done", "message": "Kaam ho gaya!"}
                   """.trimIndent()
 
-                  try {
-                      val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey")
-                      val conn = url.openConnection() as HttpURLConnection
-                      conn.requestMethod = "POST"
-                      conn.setRequestProperty("Content-Type", "application/json")
-                      conn.doOutput = true
-
-                      val body = JSONObject().apply {
-                          put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
-                          put("generationConfig", JSONObject().put("responseMimeType", "application/json"))
-                      }
-                      conn.outputStream.use { it.write(body.toString().toByteArray()) }
-                      val resText = conn.inputStream.bufferedReader().readText()
-                      val json = JSONObject(resText)
-                      val reply = json.getJSONArray("candidates")
-                          .getJSONObject(0)
-                          .getJSONObject("content")
-                          .getJSONArray("parts")
-                          .getJSONObject(0)
-                          .getString("text")
-                      return@withContext JSONObject(reply)
-                  } catch (e: Exception) {
-                      return@withContext JSONObject().put("action", "ask_user").put("message", "API Error: ${e.message}")
+                  val body = JSONObject().apply {
+                      put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
+                      put("generationConfig", JSONObject().put("responseMimeType", "application/json"))
                   }
+
+                  for (attempt in 0 until modelList.size) {
+                      val idx = (currentModelIndex + attempt) % modelList.size
+                      val modelName = modelList[idx]
+
+                      try {
+                          val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey")
+                          val conn = url.openConnection() as HttpURLConnection
+                          conn.requestMethod = "POST"
+                          conn.setRequestProperty("Content-Type", "application/json")
+                          conn.connectTimeout = 10000
+                          conn.readTimeout = 15000
+                          conn.doOutput = true
+
+                          conn.outputStream.use { it.write(body.toString().toByteArray()) }
+                          val code = conn.responseCode
+
+                          if (code == 200) {
+                              currentModelIndex = idx
+                              val resText = conn.inputStream.bufferedReader().readText()
+                              val json = JSONObject(resText)
+                              val reply = json.getJSONArray("candidates")
+                                  .getJSONObject(0)
+                                  .getJSONObject("content")
+                                  .getJSONArray("parts")
+                                  .getJSONObject(0)
+                                  .getString("text")
+                              val resultObj = JSONObject(reply)
+                              resultObj.put("used_model", modelName)
+                              return@withContext resultObj
+                          } else if (code == 400 || code == 403) {
+                              val errStr = conn.errorStream?.bufferedReader()?.readText() ?: ""
+                              if (errStr.contains("API_KEY_INVALID", ignoreCase = true) || errStr.contains("key not valid", ignoreCase = true)) {
+                                  return@withContext JSONObject().put("action", "ask_user").put("message", "API Key galat hai, kripya sahi key save karein!")
+                              }
+                          }
+                          // Agar 429 (Rate Limit) ya 404 (Model unavailable) aata hai, toh loop apne-aap agla model try karega!
+                      } catch (e: Exception) {
+                          // Agla model try karein
+                      }
+                  }
+
+                  currentModelIndex = (currentModelIndex + 1) % modelList.size
+                  return@withContext JSONObject().put("action", "all_limits_exhausted")
               }
 
               private fun performTap(x: Float, y: Float) {
