@@ -66,8 +66,8 @@ jobs:
                   applicationId "com.ai.phoneagent"
                   minSdk 26
                   targetSdk 34
-                  versionCode 14
-                  versionName "12.0-FLASH-ONLY"
+                  versionCode 15
+                  versionName "12.0-FLASH-LIVE"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -145,7 +145,7 @@ jobs:
           <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
               android:accessibilityEventTypes="typeAllMask"
               android:accessibilityFeedbackType="feedbackGeneric"
-              android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagReportViewIds|flagRequestEnhancedWebAccessibility|flagRequestFilterKeyEvents"
+              android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagReportViewIds|flagRequestFilterKeyEvents"
               android:canPerformGestures="true"
               android:canRetrieveWindowContent="true"
               android:canRequestFilterKeyEvents="true"
@@ -191,13 +191,14 @@ jobs:
                   }
 
                   fun makeInput(hintTxt: String, key: String): EditText {
-                      return EditText(this@MainActivity).apply {
+                      val et = EditText(this@MainActivity).apply {
                           hint = hintTxt
                           setHintTextColor(Color.GRAY)
                           setTextColor(Color.WHITE)
                           setText(prefs.getString(key, ""))
-                          layout.addView(this)
                       }
+                      layout.addView(et)
+                      return et
                   }
 
                   fun addBtn(txt: String, onClick: () -> Unit) {
@@ -223,8 +224,8 @@ jobs:
                   }
 
                   addBtn("🎤 1. Enable Voice Mic Permission") {
-                      if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                          requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 101)
+                      if (this@MainActivity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                          this@MainActivity.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 101)
                       } else Toast.makeText(this@MainActivity, "Mic ON hai!", Toast.LENGTH_SHORT).show()
                   }
 
@@ -236,11 +237,11 @@ jobs:
 
                   addBtn("🔋 3. Disable Battery Restriction") {
                       try {
-                          val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                          val pm = this@MainActivity.getSystemService(Context.POWER_SERVICE) as PowerManager
                           if (!pm.isIgnoringBatteryOptimizations(packageName)) {
                               startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
                           } else Toast.makeText(this@MainActivity, "Battery Unrestricted ON hai!", Toast.LENGTH_SHORT).show()
-                      } catch (_: Exception) {}
+                      } catch (e: Exception) {}
                   }
 
                   addBtn("🤖 4. Enable Accessibility Service (Main Haath)") {
@@ -265,48 +266,48 @@ jobs:
                       Toast.makeText(this@MainActivity, "Vault Saved!", Toast.LENGTH_SHORT).show()
                   }
 
-                  val backupRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-                  backupRow.addView(Button(this).apply {
+                  val backupRow = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.HORIZONTAL }
+                  backupRow.addView(Button(this@MainActivity).apply {
                       text = "📤 Copy Backup"
                       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                       setOnClickListener {
                           val obj = JSONObject().apply {
-                              listOf("apiKey", "vaultName", "vaultContact", "vaultUpi", "vaultSkills", "userMemory", "activeMission").forEach {
-                                  put(it, prefs.getString(it, ""))
+                              listOf("apiKey", "vaultName", "vaultContact", "vaultUpi", "vaultSkills", "userMemory", "activeMission").forEach { k ->
+                                  put(k, prefs.getString(k, ""))
                               }
                           }
-                          val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                          val cb = this@MainActivity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                           cb.setPrimaryClip(ClipData.newPlainText("AIBackup", obj.toString()))
                           Toast.makeText(this@MainActivity, "Backup Copied!", Toast.LENGTH_LONG).show()
                       }
                   })
-                  backupRow.addView(Button(this).apply {
+                  backupRow.addView(Button(this@MainActivity).apply {
                       text = "📥 Restore Backup"
                       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                       setOnClickListener {
                           try {
-                              val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                              val cb = this@MainActivity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                               val txt = cb.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
                               val obj = JSONObject(txt)
                               val ed = prefs.edit()
-                              listOf("apiKey", "vaultName", "vaultContact", "vaultUpi", "vaultSkills", "userMemory", "activeMission").forEach {
-                                  ed.putString(it, obj.optString(it, ""))
+                              listOf("apiKey", "vaultName", "vaultContact", "vaultUpi", "vaultSkills", "userMemory", "activeMission").forEach { k ->
+                                  ed.putString(k, obj.optString(k, ""))
                               }
                               ed.apply()
-                              recreate()
+                              this@MainActivity.recreate()
                               Toast.makeText(this@MainActivity, "Backup Restored!", Toast.LENGTH_SHORT).show()
-                          } catch (_: Exception) {
+                          } catch (e: Exception) {
                               Toast.makeText(this@MainActivity, "Pehle Backup JSON copy karein!", Toast.LENGTH_SHORT).show()
                           }
                       }
                   })
                   layout.addView(backupRow)
 
-                  addLabel("⚡ Active 100% Free Flash & Live Models (No Paid/Pro Models):", 14f, "#FBBF24")
-                  layout.addView(TextView(this).apply {
+                  addLabel("⚡ Active 100% Free Flash & Live Models:", 14f, "#FBBF24")
+                  layout.addView(TextView(this@MainActivity).apply {
                       val m = prefs.getString("activeMission", "None")
                       val l = prefs.getString("brainLogs", "No logs yet.")
-                      text = "🟢 Active Models:\n• gemini-3.8-live-extension-thinking\n• gemini-3.8-live\n• gemini-3-flash-live\n• gemini-3.8-flash\n• gemini-3.7-flash\n• gemini-3.6-flash\n• gemini-3.5-flash\n• gemini-3.5-flash-lite\n• gemini-3-flash-preview\n• gemini-3.1-flash-lite\n• gemini-2.5-flash\n• gemini-2.5-flash-lite\n• gemini-2.0-flash\n\n🎯 Mission: $m\n📜 Logs:\n$l"
+                      text = "🟢 Active Free Models:\n• gemini-3.8-live-extension-thinking\n• gemini-3.8-live\n• gemini-3-flash-live\n• gemini-3.8-flash\n• gemini-3.7-flash\n• gemini-3.6-flash\n• gemini-3.5-flash\n• gemini-3.5-flash-lite\n• gemini-3-flash-preview\n• gemini-3.1-flash-lite\n• gemini-2.5-flash\n• gemini-2.5-flash-lite\n• gemini-2.0-flash\n\n🎯 Mission: $m\n📜 Logs:\n$l"
                       setTextColor(Color.LTGRAY)
                       textSize = 11.5f
                   })
@@ -362,7 +363,7 @@ jobs:
                           putExtra(RecognizerIntent.EXTRA_PROMPT, promptText)
                       }
                       startActivityForResult(intent, 200)
-                  } catch (_: Exception) {
+                  } catch (e: Exception) {
                       Toast.makeText(this, "Google Voice app nahi mila!", Toast.LENGTH_SHORT).show()
                       finish()
                   }
@@ -458,7 +459,6 @@ jobs:
               private val nodeMap = mutableMapOf<Int, AccessibilityNodeInfo>()
               private var tts: TextToSpeech? = null
 
-              // 100% Free-Tier Friendly Flash & Live Models ONLY (No Argon, No 3.1-Pro, No Paid Pro)
               private val flashAndLiveModels = listOf(
                   "gemini-3.8-live-extension-thinking",
                   "gemini-3.8-live",
@@ -485,7 +485,7 @@ jobs:
                   instance = this
                   val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
                   Thread.setDefaultUncaughtExceptionHandler { t, e ->
-                      try { saveBrainLog("CRASH_GUARD: ${e.message}") } catch (_: Exception) {}
+                      try { saveBrainLog("CRASH_GUARD: ${e.message}") } catch (ex: Exception) {}
                       defaultHandler?.uncaughtException(t, e)
                   }
                   tts = TextToSpeech(this) { status ->
@@ -505,7 +505,7 @@ jobs:
                       val old = prefs.getString("brainLogs", "") ?: ""
                       val updated = ("[$time] $entry\n" + old).take(1200)
                       prefs.edit().putString("brainLogs", updated).apply()
-                  } catch (_: Exception) {}
+                  } catch (e: Exception) {}
               }
 
               private fun speakOut(text: String) {
@@ -535,7 +535,7 @@ jobs:
                   params.width = if (isMinimized && !isRunning) WindowManager.LayoutParams.WRAP_CONTENT else (dm.widthPixels * 0.96).toInt()
                   params.x = params.x.coerceIn(0, dm.widthPixels - 120)
                   params.y = params.y.coerceIn(20, dm.heightPixels - 160)
-                  try { windowManager.updateViewLayout(view, params) } catch (_: Exception) {}
+                  try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
               }
 
               override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -606,7 +606,7 @@ jobs:
 
               private fun createMovableFloatingBar() {
                   windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-                  floatingLayout?.let { try { windowManager.removeView(it) } catch (_: Exception) {} }
+                  floatingLayout?.let { try { windowManager.removeView(it) } catch (e: Exception) {} }
 
                   val dm = resources.displayMetrics
                   params = WindowManager.LayoutParams(
@@ -648,7 +648,7 @@ jobs:
                               val curDm = resources.displayMetrics
                               params.x = (initX + (ev.rawX - touchX).toInt()).coerceIn(0, curDm.widthPixels - 120)
                               params.y = (initY + (ev.rawY - touchY).toInt()).coerceIn(20, curDm.heightPixels - 160)
-                              try { windowManager.updateViewLayout(container, params) } catch (_: Exception) {}
+                              try { windowManager.updateViewLayout(container, params) } catch (e: Exception) {}
                               true
                           }
                           else -> false
@@ -771,7 +771,7 @@ jobs:
                   container.addView(inputRow)
                   windowManager.addView(container, params)
               }
-
+              
               private fun setTouchPassThrough(passThrough: Boolean) {
                   val view = floatingLayout ?: return
                   params.flags = if (passThrough) {
@@ -779,7 +779,7 @@ jobs:
                   } else {
                       WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                   }
-                  try { windowManager.updateViewLayout(view, params) } catch (_: Exception) {}
+                  try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
               }
 
               private fun setWindowGhostMode(ghost: Boolean) {
@@ -792,7 +792,7 @@ jobs:
                       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                   }
                   view.alpha = if (ghost) 0.0f else 1.0f
-                  try { windowManager.updateViewLayout(view, params) } catch (_: Exception) {}
+                  try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
               }
 
               private fun autoCollapseBar(collapse: Boolean) {
@@ -802,7 +802,7 @@ jobs:
                   planPreviewTv.visibility = if (collapse && !isRunning) View.GONE else View.VISIBLE
                   minBtn.text = if (collapse) "➕" else "➖"
                   setTouchPassThrough(true)
-                  try { windowManager.updateViewLayout(view, params) } catch (_: Exception) {}
+                  try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
               }
 
               private fun getPersonalVaultSummary(): String {
@@ -812,10 +812,9 @@ jobs:
                   val upi = prefs.getString("vaultUpi", "") ?: ""
                   val skills = prefs.getString("vaultSkills", "") ?: ""
                   val mem = prefs.getString("userMemory", "") ?: ""
-                  return "Name: $name | Contact: $contact | UPI_ID: $upi | Skills: $skills | ExtraRules: $mem"
+                  return "Name: $name | Contact: $contact \vert{} UPI_ID:$upi | Skills: $skills \vert{} ExtraRules:$mem"
               }
 
-              // 0.05s OFFLINE INSTANT REFLEX FOR SIMPLE COMMANDS
               private fun tryOfflineInstantReflex(goal: String): Boolean {
                   val g = goal.trim().lowercase()
                   when {
@@ -860,7 +859,6 @@ jobs:
                   isRunning = true
                   if (!isResumeWithCorrection) {
                       history.clear()
-                      recentActionSignatures.clear()
                       failedTargets.clear()
                       researchedContext = ""
                   }
@@ -927,7 +925,6 @@ jobs:
                               }
 
                               val ok = executeLocalStepWithVerification(step)
-                              // Screen changes after click/type, so re-read fresh screen on next step
                               if (!ok || act == "click" || act == "type" || act == "open_app" || act == "direct_intent") {
                                   stepQueue.clear()
                                   break
@@ -976,7 +973,7 @@ jobs:
                           val capabilityNote = nextDecision.optString("capability_note", "")
 
                           if (chosenBtnInfo.isNotEmpty() || nextStepPlan.isNotEmpty()) {
-                              planPreviewTv.text = "🎯 बटन: $chosenBtnInfo | आगे: $nextStepPlan"
+                              planPreviewTv.text = "🎯 बटन: $chosenBtnInfo \vert{} आगे: $nextStepPlan"
                           }
 
                           val topAct = nextDecision.optString("action", "")
@@ -993,7 +990,7 @@ jobs:
                               break
                           } else if (topAct == "ask_user") {
                               val m = nextDecision.optString("message", "यहाँ आपकी मदद चाहिए")
-                              val fullMsg = if (capabilityNote.isNotEmpty()) "$m — $capabilityNote" else m
+                              val fullMsg = if (capabilityNote.isNotEmpty()) "$m —$capabilityNote" else m
                               speakOut(fullMsg)
                               vibrateTick(320)
                               pauseForUser("🤝 $fullMsg")
@@ -1028,8 +1025,7 @@ jobs:
                   val x = step.optInt("x", -1)
                   val y = step.optInt("y", -1)
 
-                  // Safety Lock on destructive actions unless explicitly requested in currentGoal
-                  val lowerTarget = "$target $reason".lowercase()
+                  val lowerTarget = "$target$reason".lowercase()
                   val goalLower = currentGoal.lowercase()
                   if ((lowerTarget.contains("delete") || lowerTarget.contains("uninstall") || lowerTarget.contains("format")) &&
                       !goalLower.contains("delete") && !goalLower.contains("डिलीट") && !goalLower.contains("हटाओ") && !goalLower.contains("uninstall")) {
@@ -1042,7 +1038,7 @@ jobs:
                   if (nextHint.isNotEmpty()) planPreviewTv.text = "🎯 इसके बाद: $nextHint"
 
                   val pkgNow = rootInActiveWindow?.packageName?.toString()?.substringAfterLast(".") ?: "app"
-                  history.add("[$pkgNow]$action(#$targetId '$target' $reason)")
+                  history.add("[$pkgNow]$action(#$targetId '$target'$reason)")
                   if (history.size > 16) history.removeAt(0)
 
                   when (action) {
@@ -1303,7 +1299,7 @@ jobs:
                                       val b64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
                                       deferred.complete(b64)
                                   } else deferred.complete(null)
-                              } catch (_: Exception) {
+                              } catch (e: Exception) {
                                   deferred.complete(null)
                               }
                           }
@@ -1311,7 +1307,7 @@ jobs:
                               deferred.complete(null)
                           }
                       })
-                  } catch (_: Exception) {
+                  } catch (e: Exception) {
                       setWindowGhostMode(false)
                       return null
                   }
@@ -1331,7 +1327,7 @@ jobs:
                       val t = (n.text ?: "").toString().lowercase()
                       val d = (n.contentDescription ?: "").toString().lowercase()
                       val id = (n.viewIdResourceName ?: "").substringAfterLast("/").lowercase()
-                      val combined = "$t $d $id"
+                      val combined = "$t $d$id"
                       if (adWords.any { combined.contains(it) } || id.contains("ad_badge") || id.contains("promoted")) {
                           return true
                       }
@@ -1405,7 +1401,7 @@ jobs:
                       val d = (node.contentDescription ?: "").toString().lowercase()
                       val h = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) (node.hintText ?: "").toString().lowercase() else ""
                       val id = (node.viewIdResourceName ?: "").substringAfterLast("/").lowercase()
-                      val all = "$t $d $h $id"
+                      val all = "$t$d $h$id"
                       for (k in keys) {
                           if (all.contains(k)) return Pair(r.centerX(), r.centerY())
                       }
@@ -1442,7 +1438,7 @@ jobs:
                           startActivity(intent)
                           true
                       } else false
-                  } catch (_: Exception) {
+                  } catch (e: Exception) {
                       false
                   }
               }
@@ -1453,7 +1449,7 @@ jobs:
                       val net = cm.activeNetwork ?: return false
                       val caps = cm.getNetworkCapabilities(net) ?: return false
                       caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                  } catch (_: Exception) {
+                  } catch (e: Exception) {
                       true
                   }
               }
@@ -1559,7 +1555,7 @@ jobs:
                                   lastError = e.message ?: "Timeout"
                                   if (!withSearch) break
                               } finally {
-                                  try { conn?.disconnect() } catch (_: Exception) {}
+                                  try { conn?.disconnect() } catch (e: Exception) {}
                               }
                           }
                       }
@@ -1578,7 +1574,7 @@ jobs:
                   if (objStart != -1 && objEnd != -1 && objEnd > objStart) {
                       try {
                           return JSONObject(clean.substring(objStart, objEnd + 1))
-                      } catch (_: Exception) {}
+                      } catch (e: Exception) {}
                   }
                   val arrStart = clean.indexOf('[')
                   val arrEnd = clean.lastIndexOf(']')
@@ -1586,7 +1582,7 @@ jobs:
                       try {
                           val arr = JSONArray(clean.substring(arrStart, arrEnd + 1))
                           return JSONObject().put("steps", arr)
-                      } catch (_: Exception) {}
+                      } catch (e: Exception) {}
                   }
                   return JSONObject().put("action", "wait")
               }
@@ -1843,7 +1839,7 @@ jobs:
                           c.contains("quick_settings") -> performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
                           else -> false
                       }
-                  } catch (_: Exception) {
+                  } catch (e: Exception) {
                       false
                   }
               }
@@ -1863,7 +1859,7 @@ jobs:
                           }
                       }
                       names.distinct().take(50).joinToString(", ")
-                  } catch (_: Exception) {
+                  } catch (e: Exception) {
                       "YouTube, WhatsApp, Chrome, Settings, Instagram, Phone"
                   }
               }
@@ -1913,7 +1909,7 @@ jobs:
                   try {
                       val v = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                       v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
-                  } catch (_: Exception) {}
+                  } catch (e: Exception) {}
               }
 
               override fun onInterrupt() {}
@@ -1921,7 +1917,7 @@ jobs:
               override fun onDestroy() {
                   if (instance == this) instance = null
                   agentJob?.cancel()
-                  floatingLayout?.let { try { windowManager.removeView(it) } catch (_: Exception) {} }
+                  floatingLayout?.let { try { windowManager.removeView(it) } catch (e: Exception) {} }
                   tts?.shutdown()
                   super.onDestroy()
               }
