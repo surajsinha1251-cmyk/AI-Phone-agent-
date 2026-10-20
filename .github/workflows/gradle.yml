@@ -66,8 +66,8 @@ jobs:
                   applicationId "com.ai.phoneagent"
                   minSdk 26
                   targetSdk 34
-                  versionCode 4
-                  versionName "4.0"
+                  versionCode 5
+                  versionName "5.0"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -175,7 +175,7 @@ jobs:
                       setPadding(50, 70, 50, 50)
                   }
                   val title = TextView(this).apply {
-                      text = "🤖 AI Phone Commander 4.0\n(Fast & Perfect Edition)"
+                      text = "🤖 AI Phone Commander 5.0\n(Smart Brain & Compact Bar)"
                       textSize = 22f
                       setTextColor(Color.parseColor("#818CF8"))
                       setPadding(0, 0, 0, 30)
@@ -233,7 +233,7 @@ jobs:
                       }
                   }
                   val infoText = TextView(this).apply {
-                      text = "\n✅ 4.0 Fixes:\n• Slow Shortcut system hata diya gaya hai (1 sec Fast Response)\n• 🎤 100% Working Google Voice Popup\n• Sahi Click, Type, Search Enter aur Smooth Scroll\n• Torch, Volume aur App Launcher"
+                      text = "\n🔥 5.0 Smart Upgrades:\n• Ultra-Compact Bar (Screen kabhi cover nahi hogi)\n• Kaam chalte waqt Bar apne-aap chota (Minimize) ho jayega\n• Har 1 sec mein screen dekhna band! Ek baar mein poora plan\n• Continuous Loop (Jab tak na roko tab tak Scroll/Reels chalayega)\n• Galat Voice Typing ka asli matlab samajhne wala dimaag"
                       setTextColor(Color.LTGRAY)
                       textSize = 13f
                   }
@@ -324,15 +324,19 @@ jobs:
           import android.graphics.Path
           import android.graphics.PixelFormat
           import android.graphics.Rect
+          import android.graphics.drawable.GradientDrawable
           import android.hardware.camera2.CameraManager
           import android.media.AudioManager
+          import android.net.Uri
           import android.os.Build
           import android.os.Bundle
           import android.os.VibrationEffect
           import android.os.Vibrator
           import android.speech.tts.TextToSpeech
+          import android.text.TextUtils
           import android.view.Gravity
           import android.view.MotionEvent
+          import android.view.View
           import android.view.WindowManager
           import android.view.accessibility.AccessibilityEvent
           import android.view.accessibility.AccessibilityNodeInfo
@@ -352,16 +356,21 @@ jobs:
 
               private lateinit var windowManager: WindowManager
               private lateinit var floatingLayout: LinearLayout
+              private lateinit var topRow: LinearLayout
+              private lateinit var inputRow: LinearLayout
               private lateinit var statusTv: TextView
               private lateinit var cmdInput: EditText
-              private lateinit var micBtn: Button
-              private lateinit var actionBtn: Button
-              private lateinit var ttsToggleBtn: Button
-              private lateinit var stopBtn: Button
+              private lateinit var micBtn: TextView
+              private lateinit var actionBtn: TextView
+              private lateinit var ttsToggleBtn: TextView
+              private lateinit var stopBtn: TextView
+              private lateinit var minBtn: TextView
               private lateinit var params: WindowManager.LayoutParams
 
               private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+              private var agentJob: Job? = null
               private var isRunning = false
+              private var isMinimized = false
               private var isVoiceEnabled = true
               private var currentGoal = ""
               private val history = mutableListOf<String>()
@@ -369,12 +378,10 @@ jobs:
 
               private var tts: TextToSpeech? = null
 
-              // Sabse fast aur working models upar + dead models auto-skip
               private val modelList = listOf(
                   "gemini-2.5-flash",
                   "gemini-2.5-flash-lite",
                   "gemini-3-flash-preview",
-                  "gemini-3.1-flash-lite",
                   "gemini-3.5-flash",
                   "gemini-3.5-flash-lite",
                   "gemini-3.8-flash",
@@ -390,7 +397,7 @@ jobs:
                   super.onServiceConnected()
                   instance = this
                   initVoiceEngine()
-                  createFloatingBar()
+                  createCompactFloatingBar()
               }
 
               private fun initVoiceEngine() {
@@ -411,40 +418,107 @@ jobs:
                   scope.launch {
                       cmdInput.setText(spoken)
                       currentGoal = spoken
-                      if (isRunning) {
-                          isRunning = false
-                          delay(300)
-                      }
-                      startFastAgentLoop()
+                      startSmartAutonomousGoal()
                   }
               }
 
-              private fun createFloatingBar() {
+              private fun makePillButton(label: String, bgColor: String): TextView {
+                  return TextView(this).apply {
+                      text = label
+                      textSize = 13f
+                      setTextColor(Color.WHITE)
+                      gravity = Gravity.CENTER
+                      setPadding(22, 12, 22, 12)
+                      background = GradientDrawable().apply {
+                          setColor(Color.parseColor(bgColor))
+                          cornerRadius = 20f
+                      }
+                      val lp = LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.WRAP_CONTENT,
+                          LinearLayout.LayoutParams.WRAP_CONTENT
+                      ).apply { setMargins(6, 0, 0, 0) }
+                      layoutParams = lp
+                  }
+              }
+
+              // ULTRA-COMPACT FLOATING BAR: Kabhi bhi screen ko cover nahi karega!
+              private fun createCompactFloatingBar() {
                   windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
                   params = WindowManager.LayoutParams(
                       WindowManager.LayoutParams.MATCH_PARENT,
                       WindowManager.LayoutParams.WRAP_CONTENT,
                       WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                      WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                       PixelFormat.TRANSLUCENT
                   ).apply { gravity = Gravity.TOP }
 
                   floatingLayout = LinearLayout(this).apply {
                       orientation = LinearLayout.VERTICAL
-                      setBackgroundColor(Color.parseColor("#EE0F172A"))
-                      setPadding(20, 20, 20, 20)
+                      setBackgroundColor(Color.parseColor("#E60F172A"))
+                      setPadding(16, 10, 16, 10)
                   }
+
+                  // Top Row: Status + Quick Controls (Hamesha sirf 1 patli line mein rahega)
+                  topRow = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER_VERTICAL
+                  }
+
                   statusTv = TextView(this).apply {
-                      text = "🤖 AI 4.0 Ready: 🎤 दबाकर बोलें या लिखकर ▶ दबाएं!"
+                      text = "⚡ AI 5.0 Ready: 🎤 बोलें या लिखें"
                       setTextColor(Color.parseColor("#4ADE80"))
-                      textSize = 12.5f
+                      textSize = 12f
+                      maxLines = 1
+                      ellipsize = TextUtils.TruncateAt.END
+                      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                   }
-                  val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+
+                  ttsToggleBtn = makePillButton("🔊", "#334155").apply {
+                      setOnClickListener {
+                          isVoiceEnabled = !isVoiceEnabled
+                          text = if (isVoiceEnabled) "🔊" else "🔇"
+                          if (!isVoiceEnabled) tts?.stop()
+                      }
+                  }
+
+                  stopBtn = makePillButton("⏹", "#DC2626").apply {
+                      setOnClickListener { stopAgent("⏹ आपने AI को रोक दिया।") }
+                  }
+
+                  minBtn = makePillButton("➖", "#475569").apply {
+                      setOnClickListener {
+                          isMinimized = !isMinimized
+                          inputRow.visibility = if (isMinimized) View.GONE else View.VISIBLE
+                          text = if (isMinimized) "➕" else "➖"
+                          if (isMinimized) setTouchPassThrough(true)
+                      }
+                  }
+
+                  topRow.addView(statusTv)
+                  topRow.addView(ttsToggleBtn)
+                  topRow.addView(stopBtn)
+                  topRow.addView(minBtn)
+
+                  // Second Row: Single-Line Input + Mic + Run (Kabhi lamba nahi failega!)
+                  inputRow = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER_VERTICAL
+                      setPadding(0, 6, 0, 0)
+                  }
+
                   cmdInput = EditText(this).apply {
-                      hint = "Kuch bhi likho ya 🎤 dabao..."
-                      setHintTextColor(Color.GRAY)
+                      hint = "यहाँ लिखें या 🎤 दबाएँ..."
+                      setHintTextColor(Color.LTGRAY)
                       setTextColor(Color.WHITE)
                       textSize = 13f
+                      setSingleLine(true)
+                      maxLines = 1
+                      ellipsize = TextUtils.TruncateAt.END
+                      setPadding(20, 10, 20, 10)
+                      background = GradientDrawable().apply {
+                          setColor(Color.parseColor("#1E293B"))
+                          cornerRadius = 18f
+                      }
                       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                       setOnTouchListener { _, event ->
                           if (event.action == MotionEvent.ACTION_DOWN) {
@@ -452,12 +526,9 @@ jobs:
                           }
                           false
                       }
-                      setOnClickListener {
-                          setTouchPassThrough(false)
-                      }
                   }
-                  micBtn = Button(this).apply {
-                      text = "🎤"
+
+                  micBtn = makePillButton("🎤", "#2563EB").apply {
                       setOnClickListener {
                           val vIntent = Intent(this@AgentService, VoiceActivity::class.java).apply {
                               addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -465,168 +536,508 @@ jobs:
                           startActivity(vIntent)
                       }
                   }
-                  actionBtn = Button(this).apply {
-                      text = "▶"
+
+                  actionBtn = makePillButton("▶", "#16A34A").apply {
                       setOnClickListener {
                           val q = cmdInput.text.toString().trim()
                           if (q.isNotEmpty()) {
                               currentGoal = q
-                              startFastAgentLoop()
+                              startSmartAutonomousGoal()
                           }
                       }
                   }
-                  ttsToggleBtn = Button(this).apply {
-                      text = "🔊"
-                      setOnClickListener {
-                          isVoiceEnabled = !isVoiceEnabled
-                          ttsToggleBtn.text = if (isVoiceEnabled) "🔊" else "🔇"
-                          if (!isVoiceEnabled) tts?.stop()
-                      }
-                  }
-                  stopBtn = Button(this).apply {
-                      text = "⏹"
-                      setOnClickListener { stopAgent("⏹ Aapne AI ko rok diya.") }
-                  }
-                  row.addView(cmdInput)
-                  row.addView(micBtn)
-                  row.addView(actionBtn)
-                  row.addView(ttsToggleBtn)
-                  row.addView(stopBtn)
-                  floatingLayout.addView(statusTv)
-                  floatingLayout.addView(row)
+
+                  inputRow.addView(cmdInput)
+                  inputRow.addView(micBtn)
+                  inputRow.addView(actionBtn)
+
+                  floatingLayout.addView(topRow)
+                  floatingLayout.addView(inputRow)
                   windowManager.addView(floatingLayout, params)
               }
 
               private fun setTouchPassThrough(passThrough: Boolean) {
                   params.flags = if (passThrough) WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE else WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                  windowManager.updateViewLayout(floatingLayout, params)
+                  try {
+                      windowManager.updateViewLayout(floatingLayout, params)
+                  } catch (_: Exception) {}
               }
 
-              private fun startFastAgentLoop() {
-                  if (isRunning) return
-                  isRunning = true
-                  actionBtn.text = "⏳"
-                  history.clear()
+              private fun autoCollapseBar(collapse: Boolean) {
+                  isMinimized = collapse
+                  inputRow.visibility = if (collapse) View.GONE else View.VISIBLE
+                  minBtn.text = if (collapse) "➕" else "➖"
                   setTouchPassThrough(true)
-                  speakOut("Kaam shuru kar raha hoon")
+              }
 
-                  scope.launch {
-                      while (isRunning) {
-                          statusTv.setTextColor(Color.parseColor("#38BDF8"))
-                          statusTv.text = "🔍 Screen dekh raha hoon..."
+              // SMART BRAIN ENGINE: Har 1 sec mein screen nahi dekhega! Pehle samjhega aur poora plan ek sath chalayega
+              private fun startSmartAutonomousGoal() {
+                  agentJob?.cancel()
+                  isRunning = true
+                  history.clear()
+                  autoCollapseBar(true) // Kaam shuru hote hi bar patla ho jayega taaki screen saaf dikhe!
 
-                          val screenElements = readScreenElements()
-                          val decision = askGeminiFast(currentGoal, screenElements)
-                          if (!isRunning) break
+                  agentJob = scope.launch {
+                      statusTv.setTextColor(Color.parseColor("#38BDF8"))
+                      statusTv.text = "🧠 आपकी बात समझकर पूरा प्लान बना रहा हूँ..."
 
-                          val action = decision.optString("action", "wait")
-                          val reason = decision.optString("reason", action)
-                          val msg = decision.optString("message", "")
-                          val speakText = decision.optString("speak", "")
-                          val targetId = decision.optInt("id", -1)
-                          val x = decision.optInt("x", -1)
-                          val y = decision.optInt("y", -1)
+                      val installedApps = getInstalledAppNames()
+                      val currentPkg = rootInActiveWindow?.packageName?.toString() ?: "home"
 
-                          if (speakText.isNotEmpty()) speakOut(speakText)
+                      // Step 1: User ki baat (chahe voice typing mein galat likhi ho) samajhna aur shuruati steps banana
+                      val masterPlan = understandAndPlanWithAI(currentGoal, installedApps, currentPkg)
+                      if (!isRunning) return@launch
 
-                          if (action == "rate_limit") {
-                              statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                              statusTv.text = "⏳ Limit full: 8 sec ruk kar aage badh raha hoon..."
-                              delay(8000)
-                              continue
+                      val understood = masterPlan.optString("understood_goal", currentGoal)
+                      val speakMsg = masterPlan.optString("speak", "ठीक है, मैं करता हूँ")
+                      speakOut(speakMsg)
+                      currentGoal = understood
+
+                      val stepQueue = mutableListOf<JSONObject>()
+                      val initialSteps = masterPlan.optJSONArray("steps")
+                      if (initialSteps != null) {
+                          for (i in 0 until initialSteps.length()) {
+                              stepQueue.add(initialSteps.getJSONObject(i))
                           }
+                      }
 
-                          history.add("$action ($reason)")
-                          if (history.size > 10) history.removeAt(0)
+                      // Step 2: Bina bar-bar AI se poochhe saare steps dhadadhad chalana
+                      var aiConsultCount = 0
+                      while (isRunning) {
+                          while (stepQueue.isNotEmpty() && isRunning) {
+                              val step = stepQueue.removeAt(0)
+                              val act = step.optString("action", "")
 
-                          when (action) {
-                              "open_app" -> {
-                                  val appName = decision.optString("app_name", "")
-                                  statusTv.setTextColor(Color.parseColor("#A7F3D0"))
-                                  statusTv.text = "🚀 App khol raha hoon: $appName"
-                                  val ok = openAppByName(appName)
-                                  if (!ok) {
-                                      performGlobalAction(GLOBAL_ACTION_HOME)
-                                  }
-                                  delay(2200)
-                              }
-                              "click" -> {
-                                  statusTv.setTextColor(Color.parseColor("#A7F3D0"))
-                                  statusTv.text = "👆 Click: $reason"
-                                  performSmartClick(targetId, x, y)
-                                  delay(1800)
-                              }
-                              "double_tap" -> {
-                                  statusTv.setTextColor(Color.parseColor("#A7F3D0"))
-                                  statusTv.text = "👆👆 Double Tap: $reason"
-                                  val coords = getCoordsForTarget(targetId, x, y)
-                                  performDoubleTap(coords.first.toFloat(), coords.second.toFloat())
-                                  delay(1500)
-                              }
-                              "long_press" -> {
-                                  statusTv.setTextColor(Color.parseColor("#A7F3D0"))
-                                  statusTv.text = "👇 Long Press: $reason"
-                                  val coords = getCoordsForTarget(targetId, x, y)
-                                  performLongPress(coords.first.toFloat(), coords.second.toFloat())
-                                  delay(1500)
-                              }
-                              "type" -> {
-                                  val text = decision.optString("text", "")
-                                  val pressEnter = decision.optBoolean("press_enter", true)
-                                  statusTv.setTextColor(Color.parseColor("#A7F3D0"))
-                                  statusTv.text = "⌨️ Typing: $text"
-                                  performSmartType(targetId, x, y, text, pressEnter)
-                                  delay(2200)
-                              }
-                              "scroll_down" -> {
-                                  statusTv.setTextColor(Color.parseColor("#A7F3D0"))
-                                  statusTv.text = "📜 Niche scroll kar raha hoon..."
-                                  performSwipe("up")
-                                  delay(1600)
-                              }
-                              "scroll_up" -> {
-                                  statusTv.setTextColor(Color.parseColor("#A7F3D0"))
-                                  statusTv.text = "📜 Upar scroll kar raha hoon..."
-                                  performSwipe("down")
-                                  delay(1600)
-                              }
-                              "system_control" -> {
-                                  val cmd = decision.optString("command", "")
-                                  statusTv.setTextColor(Color.parseColor("#A7F3D0"))
-                                  statusTv.text = "⚙️ System: $cmd"
-                                  executeSystemControl(cmd)
-                                  delay(1500)
-                              }
-                              "back" -> {
-                                  statusTv.text = "🔙 Back ja raha hoon..."
-                                  performGlobalAction(GLOBAL_ACTION_BACK)
-                                  delay(1500)
-                              }
-                              "home" -> {
-                                  statusTv.text = "🏠 Home screen..."
-                                  performGlobalAction(GLOBAL_ACTION_HOME)
-                                  delay(1500)
-                              }
-                              "ask_user" -> {
-                                  val alert = msg.ifEmpty { "Yahan Password/OTP daal kar ▶ dabayein" }
-                                  speakOut(alert)
-                                  vibratePhone()
-                                  pauseForUser("⚠️ AI Ruka: $alert")
-                                  break
-                              }
-                              "done" -> {
-                                  val doneMsg = msg.ifEmpty { "Kaam poora ho gaya!" }
+                              if (act == "done") {
+                                  val doneMsg = step.optString("message", "काम पूरा हो गया!")
                                   speakOut(doneMsg)
                                   vibratePhone()
                                   stopAgent("✅ $doneMsg")
+                                  return@launch
+                              }
+
+                              if (act == "ask_user") {
+                                  val askMsg = step.optString("message", "यहाँ आपकी मदद चाहिए")
+                                  speakOut(askMsg)
+                                  vibratePhone()
+                                  pauseForUser("⚠️ $askMsg")
+                                  return@launch
+                              }
+
+                              val ok = executeLocalStepSmartly(step)
+                              if (!ok) {
+                                  // Agar koi step fail hua, tabhi ruko aur screen dekho
+                                  stepQueue.clear()
                                   break
                               }
-                              else -> {
-                                  delay(1500)
+                          }
+
+                          if (!isRunning) break
+
+                          // Step 3: Jab pehle wale steps poore ho jayein (jaise App khul gaya ya search ho gaya),
+                          // tab SIRF EK BAAR screen dekh kar aage ke 3-5 steps ek sath banao!
+                          aiConsultCount++
+                          if (aiConsultCount > 12) {
+                              stopAgent("✅ काम पूरा हो गया!")
+                              break
+                          }
+
+                          statusTv.setTextColor(Color.parseColor("#60A5FA"))
+                          statusTv.text = "🧠 अगला रास्ता तय कर रहा हूँ..."
+                          delay(600)
+
+                          val screenSnapshot = readScreenElements()
+                          val nextBatch = planNextBatchFromScreen(currentGoal, screenSnapshot)
+                          if (!isRunning) break
+
+                          val topAct = nextBatch.optString("action", "")
+                          if (topAct == "rate_limit") {
+                              statusTv.setTextColor(Color.parseColor("#FBBF24"))
+                              statusTv.text = "⏳ 6 सेकंड इंतज़ार..."
+                              delay(6000)
+                              continue
+                          } else if (topAct == "done") {
+                              val m = nextBatch.optString("message", "काम पूरा हो गया!")
+                              speakOut(m)
+                              vibratePhone()
+                              stopAgent("✅ $m")
+                              break
+                          } else if (topAct == "ask_user") {
+                              val m = nextBatch.optString("message", "यहाँ पासवर्ड या ओटीपी डालें")
+                              speakOut(m)
+                              vibratePhone()
+                              pauseForUser("⚠️ $m")
+                              break
+                          }
+
+                          val batchSpeak = nextBatch.optString("speak", "")
+                          if (batchSpeak.isNotEmpty()) speakOut(batchSpeak)
+
+                          val arr = nextBatch.optJSONArray("steps")
+                          if (arr != null && arr.length() > 0) {
+                              for (i in 0 until arr.length()) {
+                                  stepQueue.add(arr.getJSONObject(i))
                               }
+                          } else if (topAct.isNotEmpty()) {
+                              stepQueue.add(nextBatch)
+                          } else {
+                              stopAgent("✅ काम पूरा हो गया!")
+                              break
                           }
                       }
                   }
+              }
+
+              // LOCAL SMART EXECUTOR: Har kam khud samajh kar bina API call ke karega
+              private suspend fun executeLocalStepSmartly(step: JSONObject): Boolean {
+                  val action = step.optString("action", "")
+                  val reason = step.optString("reason", action)
+                  val target = step.optString("target", "")
+                  val text = step.optString("text", "")
+                  val targetId = step.optInt("id", -1)
+                  val x = step.optInt("x", -1)
+                  val y = step.optInt("y", -1)
+
+                  statusTv.setTextColor(Color.parseColor("#A7F3D0"))
+                  statusTv.text = "⚡ $reason"
+                  history.add("$action($reason)")
+                  if (history.size > 12) history.removeAt(0)
+
+                  when (action) {
+                      "open_app" -> {
+                          val appName = step.optString("app_name", target)
+                          val opened = openAppByName(appName)
+                          delay(2500)
+                          return opened
+                      }
+                      "direct_intent" -> {
+                          val intentType = step.optString("intent_type", "")
+                          val data = step.optString("data", text)
+                          val ok = fireDirectIntent(intentType, data)
+                          delay(2200)
+                          return ok
+                      }
+                      "scroll_loop" -> {
+                          // Jab user kahe "scroll karte rehna jab tak main na kahoon" -> Bina AI call ke lagataar scroll karega!
+                          val direction = step.optString("direction", "up")
+                          val intervalSec = step.optInt("interval_sec", 4).coerceIn(2, 15)
+                          val maxCount = step.optInt("count", 200)
+                          for (i in 1..maxCount) {
+                              if (!isRunning) break
+                              statusTv.setTextColor(Color.parseColor("#4ADE80"))
+                              statusTv.text = "🔄 लगातार स्क्रॉल चल रहा है (#$i) — रोकने के लिए ⏹ दबाएँ"
+                              performSwipe(direction)
+                              delay(intervalSec * 1000L)
+                          }
+                          return true
+                      }
+                      "scroll_down" -> {
+                          val times = step.optInt("times", 1).coerceIn(1, 10)
+                          for (i in 1..times) {
+                              if (!isRunning) break
+                              performSwipe("up")
+                              delay(1400)
+                          }
+                          return true
+                      }
+                      "scroll_up" -> {
+                          performSwipe("down")
+                          delay(1400)
+                          return true
+                      }
+                      "click" -> {
+                          if (targetId > 0 || (x > 0 && y > 0)) {
+                              performSmartClick(targetId, x, y)
+                              delay(1600)
+                              return true
+                          }
+                          if (target.isNotEmpty()) {
+                              val coords = waitForKeywordOnScreen(target, 3000L)
+                              if (coords != null) {
+                                  performTap(coords.first.toFloat(), coords.second.toFloat())
+                                  delay(1600)
+                                  return true
+                              }
+                          }
+                          return false
+                      }
+                      "click_first_result" -> {
+                          delay(1200)
+                          val pos = findFirstPlayableItemOnScreen()
+                          if (pos != null) {
+                              performTap(pos.first.toFloat(), pos.second.toFloat())
+                              delay(1800)
+                              return true
+                          }
+                          return false
+                      }
+                      "type" -> {
+                          val pressEnter = step.optBoolean("press_enter", true)
+                          if (target.isNotEmpty() && targetId <= 0 && x <= 0) {
+                              val coords = waitForKeywordOnScreen(target, 2500L)
+                              if (coords != null) {
+                                  performTap(coords.first.toFloat(), coords.second.toFloat())
+                                  delay(700)
+                              }
+                          }
+                          val ok = performSmartType(targetId, x, y, text, pressEnter)
+                          delay(2000)
+                          return ok
+                      }
+                      "system_control" -> {
+                          val cmd = step.optString("command", target)
+                          executeSystemControl(cmd)
+                          delay(1200)
+                          return true
+                      }
+                      "back" -> {
+                          performGlobalAction(GLOBAL_ACTION_BACK)
+                          delay(1200)
+                          return true
+                      }
+                      "home" -> {
+                          performGlobalAction(GLOBAL_ACTION_HOME)
+                          delay(1200)
+                          return true
+                      }
+                      "wait" -> {
+                          val sec = step.optInt("seconds", 3).coerceIn(1, 15)
+                          delay(sec * 1000L)
+                          return true
+                      }
+                  }
+                  return false
+              }
+
+              private suspend fun waitForKeywordOnScreen(keywordsPipe: String, timeoutMs: Long): Pair<Int, Int>? {
+                  val keys = keywordsPipe.split("|", ",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+                  val start = System.currentTimeMillis()
+                  while (System.currentTimeMillis() - start < timeoutMs && isRunning) {
+                      val root = rootInActiveWindow
+                      if (root != null) {
+                          val found = searchKeywordInTree(root, keys)
+                          if (found != null) return found
+                      }
+                      delay(300)
+                  }
+                  return null
+              }
+
+              private fun searchKeywordInTree(node: AccessibilityNodeInfo?, keys: List<String>): Pair<Int, Int>? {
+                  if (node == null || !node.isVisibleToUser) return null
+                  val r = Rect()
+                  node.getBoundsInScreen(r)
+                  if (r.width() > 12 && r.height() > 12 && r.centerY() > 100) {
+                      val t = (node.text ?: "").toString().lowercase()
+                      val d = (node.contentDescription ?: "").toString().lowercase()
+                      val id = (node.viewIdResourceName ?: "").substringAfterLast("/").lowercase()
+                      val all = "$t $d $id"
+                      for (k in keys) {
+                          if (all.contains(k)) return Pair(r.centerX(), r.centerY())
+                      }
+                  }
+                  for (i in 0 until node.childCount) {
+                      val sub = searchKeywordInTree(node.getChild(i), keys)
+                      if (sub != null) return sub
+                  }
+                  return null
+              }
+
+              private fun findFirstPlayableItemOnScreen(): Pair<Int, Int>? {
+                  val root = rootInActiveWindow ?: return null
+                  val list = mutableListOf<Pair<Int, Int>>()
+                  val dm = resources.displayMetrics
+
+                  fun scan(node: AccessibilityNodeInfo?) {
+                      if (node == null || !node.isVisibleToUser) return
+                      val r = Rect()
+                      node.getBoundsInScreen(r)
+                      val t = (node.text ?: node.contentDescription ?: "").toString().trim()
+                      if (r.centerY() in (dm.heightPixels / 5)..(dm.heightPixels * 4 / 5) && r.width() > 160 && r.height() > 60 && t.length > 5) {
+                          if (node.isClickable || node.parent?.isClickable == true) {
+                              list.add(Pair(r.centerX(), r.centerY()))
+                          }
+                      }
+                      for (i in 0 until node.childCount) scan(node.getChild(i))
+                  }
+                  scan(root)
+                  return list.minByOrNull { it.second } ?: Pair(dm.widthPixels / 2, dm.heightPixels / 3)
+              }
+
+              private fun fireDirectIntent(type: String, data: String): Boolean {
+                  return try {
+                      val intent = when (type.lowercase()) {
+                          "youtube_search" -> Intent(Intent.ACTION_SEARCH).apply {
+                              setPackage("com.google.android.youtube")
+                              putExtra("query", data)
+                          }
+                          "web_search" -> Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=${Uri.encode(data)}"))
+                          "dial" -> Intent(Intent.ACTION_DIAL, Uri.parse("tel:${data.filter { it.isDigit() || it == '+' }}"))
+                          else -> null
+                      }
+                      if (intent != null) {
+                          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                          startActivity(intent)
+                          true
+                      } else false
+                  } catch (_: Exception) {
+                      false
+                  }
+              }
+
+              // PHASE 1 BRAIN: User ke galat-salat voice words ka asli matlab samajhna aur poora plan banana
+              private suspend fun understandAndPlanWithAI(rawCommand: String, installedApps: String, currentPkg: String): JSONObject = withContext(Dispatchers.IO) {
+                  val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+                  val memory = prefs.getString("userMemory", "") ?: ""
+
+                  val prompt = """
+                      You are an Intelligent Human-like Android Mind (Version 5.0).
+                      The user spoke or typed this command (Voice recognition often makes silly mistakes in Hindi/Hinglish, like writing "स्कूल" instead of "स्क्रॉल", or adding random words at the end):
+                      RAW USER INPUT: "$rawCommand"
+                      USER MEMORY: "$memory"
+                      CURRENTFOREGROUND PACKAGE: "$currentPkg"
+                      INSTALLED APPS: $installedApps
+
+                      YOUR JOB:
+                      1. Use deep common sense to decode what the user ACTUALLY wants. Ignore garbage words caused by voice typing!
+                      2. If the user wants a continuous/infinite action like "scroll karte rehna jab tak main na kahoon" or "reels chala ke scroll karte raho":
+                         First open the app, and then use action "scroll_loop":
+                         {"action": "scroll_loop", "direction": "up", "interval_sec": 4, "count": 200, "reason": "लगातार स्क्रॉल कर रहा हूँ"}
+                      3. If the user wants to search & play something on YouTube (e.g. song/video):
+                         Plan the whole sequence at once:
+                         [{"action": "direct_intent", "intent_type": "youtube_search", "data": "search query", "reason": "YouTube पर खोज रहा हूँ"},
+                          {"action": "click_first_result", "reason": "पहला वीडियो चला रहा हूँ"},
+                          {"action": "done", "message": "वीडियो चालू कर दिया है!"}]
+                      4. Available actions in "steps":
+                         - {"action": "open_app", "app_name": "YouTube", "reason": "यूट्यूब खोल रहा हूँ"}
+                         - {"action": "direct_intent", "intent_type": "youtube_search|web_search|dial", "data": "...", "reason": "..."}
+                         - {"action": "scroll_loop", "direction": "up", "interval_sec": 4, "count": 200, "reason": "जब तक आप न रोकें स्क्रॉल कर रहा हूँ"}
+                         - {"action": "scroll_down", "times": 2, "reason": "नीचे स्क्रॉल कर रहा हूँ"}
+                         - {"action": "click", "target": "Search|खोजें|Shorts|Reels", "reason": "..."}
+                         - {"action": "type", "target": "Search|Edit", "text": "...", "press_enter": true, "reason": "..."}
+                         - {"action": "click_first_result", "reason": "..."}
+                         - {"action": "system_control", "command": "torch_on|torch_off|volume_up|volume_down|mute|notifications|quick_settings", "reason": "..."}
+                         - {"action": "done", "message": "काम पूरा हो गया!"}
+
+                      Output ONLY valid JSON:
+                      {
+                        "understood_goal": "Clean corrected intent of user",
+                        "speak": "1 short natural Hindi sentence (e.g. ठीक है, यूट्यूब खोलकर लगातार स्क्रॉल करता हूँ)",
+                        "steps": [ ... ]
+                      }
+                  """.trimIndent()
+
+                  return@withContext callGeminiAPI(prompt)
+              }
+
+              // PHASE 2 BRAIN: Jab screen dekhni pade, toh ek step nahi balki aage ke saare steps ek sath तय kare
+              private suspend fun planNextBatchFromScreen(goal: String, screen: String): JSONObject = withContext(Dispatchers.IO) {
+                  val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+                  val memory = prefs.getString("userMemory", "") ?: ""
+
+                  val prompt = """
+                      You are an Intelligent Android Agent completing the user's goal with your own brain.
+                      TRUE GOAL: "$goal"
+                      USER MEMORY: "$memory"
+                      STEPS DONE SO FAR: ${history.joinToString(" -> ")}
+                      LIVE SCREEN ELEMENTS:
+                      $screen
+
+                      RULES:
+                      1. DO NOT act like a dumb robot! Look at the screen and plan the next 1 to 4 steps together in "steps" so the task finishes fast without checking the screen every second.
+                      2. If there is any popup, ad, "Allow", "Skip", "Not now", "Close", click it first in your steps!
+                      3. If the user asked for continuous scrolling and the app is now open, return a "scroll_loop" step.
+                      4. If the goal is already achieved, return {"action": "done", "message": "काम पूरा हो गया!"}.
+                      5. For clicking an element from LIVE SCREEN ELEMENTS, include its "id", "x", "y":
+                         {"action": "click", "id": 4, "x": 540, "y": 400, "reason": "..."}
+                      6. For typing in an input box, include:
+                         {"action": "type", "id": 3, "x": 540, "y": 250, "text": "...", "press_enter": true, "reason": "..."}
+                      Output ONLY valid JSON.
+                  """.trimIndent()
+
+                  return@withContext callGeminiAPI(prompt)
+              }
+
+              private suspend fun callGeminiAPI(prompt: String): JSONObject = withContext(Dispatchers.IO) {
+                  val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+                  val apiKey = prefs.getString("apiKey", "")?.trim() ?: ""
+                  if (apiKey.isEmpty()) {
+                      return@withContext JSONObject().put("action", "ask_user").put("message", "पहले ऐप में Gemini API Key सेव करें!")
+                  }
+
+                  var hitRateLimit = false
+                  var lastError = ""
+
+                  for (attempt in 0 until modelList.size) {
+                      val idx = (currentModelIndex + attempt) % modelList.size
+                      val modelName = modelList[idx]
+                      if (deadModels.contains(modelName)) continue
+
+                      try {
+                          val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey")
+                          val conn = url.openConnection() as HttpURLConnection
+                          conn.requestMethod = "POST"
+                          conn.setRequestProperty("Content-Type", "application/json")
+                          conn.connectTimeout = 8000
+                          conn.readTimeout = 12000
+                          conn.doOutput = true
+
+                          val genConfig = JSONObject()
+                              .put("responseMimeType", "application/json")
+                              .put("temperature", 0.2)
+
+                          val body = JSONObject().apply {
+                              put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
+                              put("generationConfig", genConfig)
+                          }
+
+                          conn.outputStream.use { it.write(body.toString().toByteArray()) }
+                          val code = conn.responseCode
+
+                          if (code == 200) {
+                              currentModelIndex = idx
+                              val resText = conn.inputStream.bufferedReader().readText()
+                              val json = JSONObject(resText)
+                              val rawReply = json.getJSONArray("candidates")
+                                  .getJSONObject(0)
+                                  .getJSONObject("content")
+                                  .getJSONArray("parts")
+                                  .getJSONObject(0)
+                                  .getString("text")
+                              return@withContext extractJsonObject(rawReply)
+                          } else if (code == 429) {
+                              hitRateLimit = true
+                              continue
+                          } else if (code == 404) {
+                              deadModels.add(modelName)
+                              continue
+                          } else {
+                              val errStr = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
+                              if (errStr.contains("API_KEY_INVALID", ignoreCase = true) || errStr.contains("key not valid", ignoreCase = true)) {
+                                  return@withContext JSONObject().put("action", "ask_user").put("message", "API Key गलत है!")
+                              }
+                              lastError = "$modelName ($code)"
+                              continue
+                          }
+                      } catch (e: Exception) {
+                          lastError = e.message ?: "Timeout"
+                          continue
+                      }
+                  }
+
+                  if (hitRateLimit) {
+                      return@withContext JSONObject().put("action", "rate_limit")
+                  }
+                  return@withContext JSONObject().put("action", "ask_user").put("message", "Network Error: $lastError")
+              }
+
+              private fun extractJsonObject(raw: String): JSONObject {
+                  val start = raw.indexOf('{')
+                  val end = raw.lastIndexOf('}')
+                  if (start != -1 && end != -1 && end > start) {
+                      return JSONObject(raw.substring(start, end + 1))
+                  }
+                  return JSONObject(raw)
               }
 
               private fun getCoordsForTarget(id: Int, x: Int, y: Int): Pair<Int, Int> {
@@ -667,37 +1078,36 @@ jobs:
                   }
               }
 
-              private suspend fun performSmartType(id: Int, x: Int, y: Int, text: String, pressEnter: Boolean) {
-                  val coords = getCoordsForTarget(id, x, y)
+              private suspend fun performSmartType(id: Int, x: Int, y: Int, text: String, pressEnter: Boolean): Boolean {
                   if (id > 0 || (x > 0 && y > 0)) {
+                      val coords = getCoordsForTarget(id, x, y)
                       performTap(coords.first.toFloat(), coords.second.toFloat())
                       delay(700)
                   }
 
-                  val root = rootInActiveWindow
-                  var typed = false
-                  if (root != null) {
-                      val targetNode = findEditableNode(root)
-                      if (targetNode != null) {
-                          targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                          val args = Bundle().apply {
-                              putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
-                          }
-                          typed = targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                          if (!typed) {
-                              copyToClipboard(text)
-                              typed = targetNode.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-                          }
-                          if (pressEnter) {
-                              delay(400)
-                              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                  targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
-                              }
-                              val dm = resources.displayMetrics
-                              performTap((dm.widthPixels - 90).toFloat(), (dm.heightPixels - 110).toFloat())
-                          }
+                  val root = rootInActiveWindow ?: return false
+                  val targetNode = findEditableNode(root)
+                  if (targetNode != null) {
+                      targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                      val args = Bundle().apply {
+                          putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
                       }
+                      var typed = targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                      if (!typed) {
+                          copyToClipboard(text)
+                          typed = targetNode.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+                      }
+                      if (pressEnter) {
+                          delay(400)
+                          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                              targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+                          }
+                          val dm = resources.displayMetrics
+                          performTap((dm.widthPixels - 90).toFloat(), (dm.heightPixels - 110).toFloat())
+                      }
+                      return typed
                   }
+                  return false
               }
 
               private fun findEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
@@ -734,7 +1144,7 @@ jobs:
                       if (node == null || !node.isVisibleToUser || nextId > 85) return
                       val rect = Rect()
                       node.getBoundsInScreen(rect)
-                      if (rect.top < 210 && pkg == packageName) return
+                      if (rect.top < 140 && pkg == packageName) return
 
                       val text = (node.text ?: node.contentDescription ?: "").toString().trim()
                       val idName = (node.viewIdResourceName ?: "").substringAfterLast("/")
@@ -767,132 +1177,20 @@ jobs:
                   return list.joinToString("\n")
               }
 
-              private suspend fun askGeminiFast(goal: String, screen: String): JSONObject = withContext(Dispatchers.IO) {
-                  val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
-                  val apiKey = prefs.getString("apiKey", "")?.trim() ?: ""
-                  val memory = prefs.getString("userMemory", "")?.trim() ?: ""
-
-                  if (apiKey.isEmpty()) {
-                      return@withContext JSONObject().put("action", "ask_user").put("message", "Pehle App mein Gemini API Key save karein!")
-                  }
-
-                  val prompt = """
-                      You are a Fast Human-like Android Phone Agent.
-                      USER GOAL: "$goal"
-                      USER MEMORY: "$memory"
-                      RECENT STEPS: ${history.joinToString(" -> ")}
-                      CURRENT SCREEN ELEMENTS:
-                      $screen
-
-                      RULES:
-                      1. Decide the SINGLE immediate next action to complete USER GOAL.
-                      2. If you need to open an app not currently on screen, return:
-                         {"action": "open_app", "app_name": "YouTube", "reason": "Opening YouTube"}
-                      3. To tap a button/item on screen, pass its #id and (x, y):
-                         {"action": "click", "id": 5, "x": 540, "y": 400, "reason": "Clicking item"}
-                      4. To type in a search bar or input box, pass its #id, (x, y), text, and press_enter (true for search, false for chat):
-                         {"action": "type", "id": 3, "x": 540, "y": 250, "text": "Arijit Singh song", "press_enter": true, "reason": "Typing search"}
-                      5. For scrolling: {"action": "scroll_down", "reason": "Scrolling down"} or {"action": "scroll_up", "reason": "Scrolling up"}
-                      6. For Torch/Volume/Notifications:
-                         {"action": "system_control", "command": "torch_on|torch_off|volume_up|volume_down|mute|notifications|quick_settings", "reason": "System action"}
-                      7. For navigation: {"action": "back", "reason": "Back"} or {"action": "home", "reason": "Home"}
-                      8. ONLY if screen has a Password, PIN, or OTP box, return:
-                         {"action": "ask_user", "message": "Yahan Password ya OTP daal kar Resume dabayein"}
-                      9. When goal is completed (e.g. video started playing, message sent, torch turned on), return:
-                         {"action": "done", "message": "Kaam poora ho gaya!"}
-                      Respond ONLY with 1 valid JSON object.
-                  """.trimIndent()
-
-                  var hitRateLimit = false
-                  var lastError = ""
-
-                  for (attempt in 0 until modelList.size) {
-                      val idx = (currentModelIndex + attempt) % modelList.size
-                      val modelName = modelList[idx]
-                      if (deadModels.contains(modelName)) continue
-
-                      try {
-                          val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey")
-                          val conn = url.openConnection() as HttpURLConnection
-                          conn.requestMethod = "POST"
-                          conn.setRequestProperty("Content-Type", "application/json")
-                          conn.connectTimeout = 7000
-                          conn.readTimeout = 10000
-                          conn.doOutput = true
-
-                          val genConfig = JSONObject()
-                              .put("responseMimeType", "application/json")
-                              .put("temperature", 0.1)
-
-                          val body = JSONObject().apply {
-                              put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
-                              put("generationConfig", genConfig)
-                          }
-
-                          conn.outputStream.use { it.write(body.toString().toByteArray()) }
-                          val code = conn.responseCode
-
-                          if (code == 200) {
-                              currentModelIndex = idx
-                              val resText = conn.inputStream.bufferedReader().readText()
-                              val json = JSONObject(resText)
-                              val rawReply = json.getJSONArray("candidates")
-                                  .getJSONObject(0)
-                                  .getJSONObject("content")
-                                  .getJSONArray("parts")
-                                  .getJSONObject(0)
-                                  .getString("text")
-                              return@withContext extractJsonObject(rawReply)
-                          } else if (code == 429) {
-                              hitRateLimit = true
-                              continue
-                          } else if (code == 404) {
-                              deadModels.add(modelName)
-                              continue
-                          } else {
-                              val errStr = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
-                              if (errStr.contains("API_KEY_INVALID", ignoreCase = true) || errStr.contains("key not valid", ignoreCase = true)) {
-                                  return@withContext JSONObject().put("action", "ask_user").put("message", "API Key galat hai!")
-                              }
-                              lastError = "$modelName ($code)"
-                              continue
-                          }
-                      } catch (e: Exception) {
-                          lastError = e.message ?: "Timeout"
-                          continue
-                      }
-                  }
-
-                  if (hitRateLimit) {
-                      return@withContext JSONObject().put("action", "rate_limit")
-                  }
-                  return@withContext JSONObject().put("action", "ask_user").put("message", "Network/API Error: $lastError")
-              }
-
-              private fun extractJsonObject(raw: String): JSONObject {
-                  val start = raw.indexOf('{')
-                  val end = raw.lastIndexOf('}')
-                  if (start != -1 && end != -1 && end > start) {
-                      return JSONObject(raw.substring(start, end + 1))
-                  }
-                  return JSONObject(raw)
-              }
-
               private fun pauseForUser(alertText: String) {
                   isRunning = false
                   statusTv.setTextColor(Color.parseColor("#FBBF24"))
                   statusTv.text = alertText
-                  actionBtn.text = "▶"
-                  setTouchPassThrough(false)
+                  autoCollapseBar(false)
               }
 
               private fun stopAgent(finalText: String) {
                   isRunning = false
+                  agentJob?.cancel()
                   statusTv.setTextColor(Color.parseColor("#4ADE80"))
                   statusTv.text = finalText
-                  actionBtn.text = "▶"
                   history.clear()
-                  setTouchPassThrough(false)
+                  autoCollapseBar(false)
               }
 
               private fun performTap(x: Float, y: Float) {
@@ -901,24 +1199,10 @@ jobs:
                   dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
               }
 
-              private fun performDoubleTap(x: Float, y: Float) {
-                  val path1 = Path().apply { moveTo(x, y) }
-                  val path2 = Path().apply { moveTo(x, y) }
-                  val s1 = GestureDescription.StrokeDescription(path1, 0, 55)
-                  val s2 = GestureDescription.StrokeDescription(path2, 130, 55)
-                  dispatchGesture(GestureDescription.Builder().addStroke(s1).addStroke(s2).build(), null, null)
-              }
-
-              private fun performLongPress(x: Float, y: Float) {
-                  val path = Path().apply { moveTo(x, y) }
-                  val stroke = GestureDescription.StrokeDescription(path, 0, 850)
-                  dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
-              }
-
               private fun performSwipe(direction: String) {
                   val dm = resources.displayMetrics
                   val cx = dm.widthPixels / 2f
-                  val topY = dm.heightPixels * 0.25f
+                  val topY = dm.heightPixels * 0.24f
                   val botY = dm.heightPixels * 0.78f
 
                   val path = Path().apply {
@@ -929,7 +1213,7 @@ jobs:
                           else -> { moveTo(cx, botY); lineTo(cx, topY) }
                       }
                   }
-                  val stroke = GestureDescription.StrokeDescription(path, 0, 350)
+                  val stroke = GestureDescription.StrokeDescription(path, 0, 340)
                   dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
               }
 
@@ -966,7 +1250,7 @@ jobs:
                           c.contains("quick_settings") -> performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
                           else -> false
                       }
-                  } catch (e: Exception) {
+                  } catch (_: Exception) {
                       false
                   }
               }
@@ -974,6 +1258,19 @@ jobs:
               private fun copyToClipboard(text: String) {
                   val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                   cb.setPrimaryClip(ClipData.newPlainText("AIClip", text))
+              }
+
+              private fun getInstalledAppNames(): String {
+                  return try {
+                      val pm = packageManager
+                      pm.getInstalledApplications(0)
+                          .mapNotNull { pm.getLaunchIntentForPackage(it.packageName)?.let { _ -> pm.getApplicationLabel(it).toString() } }
+                          .distinct()
+                          .take(50)
+                          .joinToString(", ")
+                  } catch (_: Exception) {
+                      "YouTube, WhatsApp, Chrome, Settings, Instagram, Phone"
+                  }
               }
 
               private fun openAppByName(appName: String): Boolean {
@@ -1025,6 +1322,7 @@ jobs:
 
               override fun onDestroy() {
                   if (instance == this) instance = null
+                  agentJob?.cancel()
                   tts?.shutdown()
                   super.onDestroy()
               }
