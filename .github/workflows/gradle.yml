@@ -66,8 +66,8 @@ jobs:
                   applicationId "com.ai.phoneagent"
                   minSdk 26
                   targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
+                  versionCode 5
+                  versionName "5.0"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -190,7 +190,7 @@ jobs:
                       }
                   }
                   val infoText = TextView(this).apply {
-                      text = "\nKaise Use Karein:\n1. Gemini API Key save karein.\n2. Dono permissions ON karein.\n3. Screen ke upar Floating AI Bar aa jayega.\n4. Usmein bolkar ya likhkar koi kaam batayein!"
+                      text = "\nKaise Use Karein:\n1. Gemini API Key save karein.\n2. Dono permissions ON karein.\n3. Screen ke upar Floating AI Bar aa jayega.\n4. Auto-Wait (15s) + 6s Delay + Multi-Model Team Active!"
                       setTextColor(Color.LTGRAY)
                       textSize = 14f
                   }
@@ -220,6 +220,7 @@ jobs:
           import android.os.VibrationEffect
           import android.os.Vibrator
           import android.view.Gravity
+          import android.view.MotionEvent
           import android.view.WindowManager
           import android.view.accessibility.AccessibilityEvent
           import android.view.accessibility.AccessibilityNodeInfo
@@ -244,6 +245,16 @@ jobs:
               private var currentGoal = ""
               private val history = mutableListOf<String>()
 
+              // Aapki dusri chat aur website ke saare models ek sath
+              private val TEAM_MODELS = listOf(
+                  "gemini-3.5-flash-lite",
+                  "gemini-2.5-flash-lite",
+                  "gemini-3.5-flash",
+                  "gemini-3-flash-preview",
+                  "gemini-3.1-flash-lite",
+                  "gemini-2.5-flash"
+              )
+
               override fun onServiceConnected() {
                   super.onServiceConnected()
                   createFloatingBar()
@@ -265,20 +276,25 @@ jobs:
                       setPadding(24, 24, 24, 24)
                   }
                   statusTv = TextView(this).apply {
-                      text = "🤖 AI Ready (3.5 Flash): Kya kaam karna hai?"
+                      text = "🤖 AI Ready (3.5 Flash-Lite): Kya kaam karna hai?"
                       setTextColor(Color.parseColor("#4ADE80"))
                       textSize = 13f
                   }
                   val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
                   cmdInput = EditText(this).apply {
-                      hint = "Bolo ya likho (jaise: YouTube kholo)"
+                      hint = "Bolo ya likho (jaise: YouTube par song chalao)"
                       setHintTextColor(Color.GRAY)
                       setTextColor(Color.WHITE)
                       textSize = 13f
                       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                      setOnTouchListener { _, event ->
+                          if (event.action == MotionEvent.ACTION_DOWN) {
+                              setTouchPassThrough(false)
+                          }
+                          false
+                      }
                       setOnClickListener {
-                          params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                          windowManager.updateViewLayout(floatingLayout, params)
+                          setTouchPassThrough(false)
                       }
                   }
                   actionBtn = Button(this).apply {
@@ -323,6 +339,13 @@ jobs:
                           if (!isRunning) break
 
                           val action = decision.optString("action", "wait")
+                          if (action == "rate_limit") {
+                              statusTv.setTextColor(Color.parseColor("#FBBF24"))
+                              statusTv.text = "⏳ Limit full: 15 sec ruk kar aage badh raha hoon..."
+                              delay(15000)
+                              continue
+                          }
+
                           val reason = decision.optString("reason", "")
                           val msg = decision.optString("message", "")
                           history.add("Action: $action ($reason)")
@@ -367,12 +390,6 @@ jobs:
                                   vibratePhone()
                                   pauseForUser("⚠️ AI Ruka Hai: $msg\n(Solve karke ▶ Resume dabayein)")
                                   break
-                              }
-                              "rate_limit" -> {
-                                  statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                                  statusTv.text = "⏳ Limit full: 15 sec ruk kar aage badh raha hoon..."
-                                  delay(15000)
-                                  continue
                               }
                               "done" -> {
                                   vibratePhone()
@@ -428,8 +445,8 @@ jobs:
                                   isClick -> "[BUTTON]"
                                   else -> "[TEXT]"
                               }
-                              val cleanText = text.replace("\n", " ").take(45)
-                              list.add("$tag \"$cleanText\" at (x=$cx, y=$cy)")
+                              val cleanText = text.replace("\n", " ").replace("\"", "'").take(45)
+                              list.add("$tag '$cleanText' at (x=$cx, y=$cy)")
                           }
                       }
                       for (i in 0 until node.childCount) {
@@ -442,10 +459,11 @@ jobs:
 
               private suspend fun askGeminiBrain(goal: String, screen: String): JSONObject = withContext(Dispatchers.IO) {
                   val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
-                  val apiKey = prefs.getString("apiKey", "") ?: ""
+                  val apiKey = prefs.getString("apiKey", "")?.trim() ?: ""
                   if (apiKey.isEmpty()) {
                       return@withContext JSONObject().put("action", "ask_user").put("message", "Pehle App mein Gemini API Key save karein!")
                   }
+
                   val prompt = """
                       You are an Autonomous Android Phone Agent.
                       USER GOAL: "$goal"
@@ -467,38 +485,59 @@ jobs:
                       {"action": "done", "message": "Kaam ho gaya!"}
                   """.trimIndent()
 
-                  try {
-                      val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey")
-                      val conn = url.openConnection() as HttpURLConnection
-                      conn.requestMethod = "POST"
-                      conn.setRequestProperty("Content-Type", "application/json")
-                      conn.doOutput = true
+                  var hitRateLimit = false
+                  var lastErr = ""
 
-                      val body = JSONObject().apply {
-                          put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
-                          put("generationConfig", JSONObject().put("responseMimeType", "application/json"))
-                      }
-                      conn.outputStream.use { it.write(body.toString().toByteArray()) }
+                  for (modelName in TEAM_MODELS) {
+                      try {
+                          val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey")
+                          val conn = url.openConnection() as HttpURLConnection
+                          conn.requestMethod = "POST"
+                          conn.setRequestProperty("Content-Type", "application/json")
+                          conn.connectTimeout = 12000
+                          conn.readTimeout = 12000
+                          conn.doOutput = true
 
-                      if (conn.responseCode == 429) {
-                          return@withContext JSONObject().put("action", "rate_limit")
-                      }
+                          val body = JSONObject().apply {
+                              put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
+                              put("generationConfig", JSONObject().put("responseMimeType", "application/json"))
+                          }
+                          conn.outputStream.use { it.write(body.toString().toByteArray()) }
 
-                      val resText = conn.inputStream.bufferedReader().readText()
-                      val json = JSONObject(resText)
-                      val reply = json.getJSONArray("candidates")
-                          .getJSONObject(0)
-                          .getJSONObject("content")
-                          .getJSONArray("parts")
-                          .getJSONObject(0)
-                          .getString("text")
-                      return@withContext JSONObject(reply)
-                  } catch (e: Exception) {
-                      if (e.message?.contains("429") == true) {
-                          return@withContext JSONObject().put("action", "rate_limit")
+                          val code = conn.responseCode
+                          if (code == 429) {
+                              hitRateLimit = true
+                              continue
+                          }
+                          if (code == 200) {
+                              val resText = conn.inputStream.bufferedReader().readText()
+                              val json = JSONObject(resText)
+                              val rawReply = json.getJSONArray("candidates")
+                                  .getJSONObject(0)
+                                  .getJSONObject("content")
+                                  .getJSONArray("parts")
+                                  .getJSONObject(0)
+                                  .getString("text")
+                              val cleanReply = rawReply.replace("```json", "").replace("```", "").trim()
+                              return@withContext JSONObject(cleanReply)
+                          } else {
+                              lastErr = "HTTP $code on $modelName"
+                              continue
+                          }
+                      } catch (e: Exception) {
+                          if (e.message?.contains("429") == true) {
+                              hitRateLimit = true
+                          } else {
+                              lastErr = e.message ?: "Error"
+                          }
+                          continue
                       }
-                      return@withContext JSONObject().put("action", "ask_user").put("message", "API Error: ${e.message}")
                   }
+
+                  if (hitRateLimit) {
+                      return@withContext JSONObject().put("action", "rate_limit")
+                  }
+                  return@withContext JSONObject().put("action", "ask_user").put("message", "API Error: $lastErr")
               }
 
               private fun performTap(x: Float, y: Float) {
@@ -535,6 +574,24 @@ jobs:
 
               private fun openAppByName(appName: String) {
                   val pm = packageManager
+                  val clean = appName.trim().lowercase()
+                  val knownPkgs = mapOf(
+                      "youtube" to "com.google.android.youtube",
+                      "whatsapp" to "com.whatsapp",
+                      "chrome" to "com.android.chrome",
+                      "settings" to "com.android.settings",
+                      "play store" to "com.android.vending"
+                  )
+                  for ((k, pkg) in knownPkgs) {
+                      if (clean.contains(k)) {
+                          val directIntent = pm.getLaunchIntentForPackage(pkg)
+                          if (directIntent != null) {
+                              directIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                              startActivity(directIntent)
+                              return
+                          }
+                      }
+                  }
                   val apps = pm.getInstalledApplications(0)
                   val match = apps.firstOrNull {
                       pm.getApplicationLabel(it).toString().contains(appName, ignoreCase = true)
