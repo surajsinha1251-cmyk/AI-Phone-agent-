@@ -395,7 +395,7 @@ jobs:
                       text = "🔊"
                       setOnClickListener {
                           isVoiceEnabled = !isVoiceEnabled
-                          this.text = if (isVoiceEnabled) "🔊" else "🔇"
+                          ttsToggleBtn.text = if (isVoiceEnabled) "🔊" else "🔇"
                           if (!isVoiceEnabled) tts?.stop()
                       }
                   }
@@ -582,9 +582,9 @@ jobs:
 
                   when (action) {
                       "shortcut" -> {
-                          val type = step.optString("shortcut_type", "")
+                          val sType = step.optString("shortcut_type", "")
                           val data = step.optString("data", text)
-                          val ok = runDirectShortcut(type, data)
+                          val ok = runDirectShortcut(sType, data)
                           delay(1500)
                           return ok
                       }
@@ -724,9 +724,9 @@ jobs:
                   }
               }
 
-              private fun runDirectShortcut(type: String, data: String): Boolean {
+              private fun runDirectShortcut(shortcutType: String, data: String): Boolean {
                   return try {
-                      val intent = when (type.lowercase()) {
+                      val intent = when (shortcutType.lowercase()) {
                           "youtube_search" -> Intent(Intent.ACTION_SEARCH).apply {
                               setPackage("com.google.android.youtube")
                               putExtra("query", data)
@@ -738,7 +738,7 @@ jobs:
                           }
                           "dial" -> Intent(Intent.ACTION_DIAL, Uri.parse("tel:$data"))
                           "whatsapp_text" -> Intent(Intent.ACTION_SEND).apply {
-                              type = "text/plain"
+                              setType("text/plain")
                               setPackage("com.whatsapp")
                               putExtra(Intent.EXTRA_TEXT, data)
                           }
