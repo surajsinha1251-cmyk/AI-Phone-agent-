@@ -67,8 +67,8 @@ jobs:
                   applicationId "com.ai.phoneagent"
                   minSdk 26
                   targetSdk 34
-                  versionCode 20
-                  versionName "19.0-UNIVERSAL-COMPLETE"
+                  versionCode 21
+                  versionName "20.0-OPENSOURCE-CORE"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -109,7 +109,7 @@ jobs:
 
               <application
                   android:allowBackup="true"
-                  android:label="AI Commander 19.0"
+                  android:label="AI Commander 20.0"
                   android:supportsRtl="true"
                   android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
 
@@ -234,7 +234,7 @@ jobs:
                       })
                   }
 
-                  addLabel("👑 AI Phone Commander 19.0\n(Universal Observe -> Think -> Act -> Verify Brain)", 19f, "#00F5D4")
+                  addLabel("👑 AI Phone Commander 20.0\n(AutoDroid DOM + AppAgent SoM + Mobile-Agent-v2 Reflector)", 18.5f, "#00F5D4")
 
                   val apiInput = makeInput("Gemini API Key (AIzaSy... comma se multiple jodein)", "apiKey")
                   addBtn("💾 Save & Verify Gemini API Key", "#16A34A") {
@@ -506,6 +506,7 @@ jobs:
               private val history = mutableListOf<String>()
               private val failedTargets = mutableSetOf<String>()
               private val nodeMap = mutableMapOf<Int, AccessibilityNodeInfo>()
+              private val nodeBoundsMap = mutableMapOf<Int, Rect>()
               private var tts: TextToSpeech? = null
 
               // 100% Real, High-Quota, Fast Working Free Gemini Flash Models
@@ -594,11 +595,11 @@ jobs:
                           history.add("USER_CORRECTION: \"$spoken\"")
                           statusTv.setTextColor(Color.parseColor("#FBBF24"))
                           statusTv.text = "✋ सुधार: '$spoken'"
-                          startUniversalAgent(isResumeWithCorrection = true)
+                          startOpenSourceCoreAgent(isResumeWithCorrection = true)
                       } else {
                           currentGoal = spoken
                           liveUserCorrection = ""
-                          startUniversalAgent(isResumeWithCorrection = false)
+                          startOpenSourceCoreAgent(isResumeWithCorrection = false)
                       }
                   }
               }
@@ -692,7 +693,7 @@ jobs:
                   dragBtn.setOnTouchListener(dragListener)
 
                   statusTv = TextView(this).apply {
-                      text = "👑 AI 19.0 Universal: बोलें या लिखें!"
+                      text = "👑 AI 20.0 OpenSource: बोलें या लिखें!"
                       setTextColor(Color.parseColor("#00F5D4"))
                       textSize = 11.5f
                       maxLines = 2
@@ -708,7 +709,7 @@ jobs:
                           if (q.isNotEmpty()) {
                               currentGoal = q
                               liveUserCorrection = ""
-                              startUniversalAgent(isResumeWithCorrection = false)
+                              startOpenSourceCoreAgent(isResumeWithCorrection = false)
                           }
                       }
                   }
@@ -806,10 +807,10 @@ jobs:
                               if (isRunning && currentGoal.isNotBlank() && q != currentGoal) {
                                   liveUserCorrection = q
                                   history.add("USER_CORRECTION: \"$q\"")
-                                  startUniversalAgent(isResumeWithCorrection = true)
+                                  startOpenSourceCoreAgent(isResumeWithCorrection = true)
                               } else {
                                   currentGoal = q; liveUserCorrection = ""
-                                  startUniversalAgent(isResumeWithCorrection = false)
+                                  startOpenSourceCoreAgent(isResumeWithCorrection = false)
                               }
                           }
                       }
@@ -931,8 +932,27 @@ jobs:
                   ).any { l.contains(it) }
               }
 
-              // UNIVERSAL AUTONOMOUS LOOP: Observe -> Think -> Act (1 Step) -> Verify Screen!
-              private fun startUniversalAgent(isResumeWithCorrection: Boolean) {
+              // Mobile-Agent-v2 Reflection Engine: Compares screen before & after action to verify progress or detect new popups!
+              private fun computeScreenReflection(prevDom: String, currDom: String, lastActionSig: String): String {
+                  if (prevDom.isEmpty()) return "Initial step — observe the HTML DOM carefully."
+                  val cleanPrev = prevDom.replace(Regex("\\d+:\\d+"), "").replace(Regex("\\d+%"), "")
+                  val cleanCurr = currDom.replace(Regex("\\d+:\\d+"), "").replace(Regex("\\d+%"), "")
+
+                  val hadDialogBefore = prevDom.contains("<dialog")
+                  val hasDialogNow = currDom.contains("<dialog")
+
+                  return when {
+                      !hadDialogBefore && hasDialogNow ->
+                          "🔔 REFLECTION: Your last action ($lastActionSig) opened a POPUP `<dialog>` window! You MUST handle the `<radio>`/`<checkbox>` options and `<button>` inside `<dialog>` FIRST before doing anything else!"
+                      cleanPrev == cleanCurr ->
+                          "⚠️ REFLECTION ALERT: Your last action ($lastActionSig) did NOT change the screen at all! Do NOT repeat $lastActionSig. Choose a different element `#id`, or use `hide_keyboard` / `scroll_down`."
+                      else ->
+                          "✅ REFLECTION: Screen updated after ($lastActionSig). Verify if the main goal is 100% complete or if another step/popup remains."
+                  }
+              }
+
+              // OPEN-SOURCE CORE LOOP: Planner -> AutoDroid HTML DOM -> AppAgent SoM Vision -> Mobile-Agent-v2 Reflector
+              private fun startOpenSourceCoreAgent(isResumeWithCorrection: Boolean) {
                   agentJob?.cancel()
                   isRunning = true
                   lastSpokenText = ""
@@ -949,9 +969,10 @@ jobs:
                       val installedApps = getInstalledAppNames()
                       val vaultSummary = getPersonalVaultSummary()
 
+                      // 1. PLANNER & GOOGLE KNOWLEDGE PHASE
                       if (!isResumeWithCorrection && needsGoogleKnowledgeOrResearch(currentGoal)) {
                           statusTv.setTextColor(Color.parseColor("#00F5D4"))
-                          statusTv.text = "🔍 Google Search से सटीक जानकारी निकाल रहा हूँ..."
+                          statusTv.text = "🔍 Planner: Google Search से सटीक जानकारी निकाल रहा हूँ..."
                           val currentPkg = rootInActiveWindow?.packageName?.toString() ?: "home"
                           val researchResult = answerOrResearchWithGoogle(currentGoal, vaultSummary, installedApps, currentPkg)
                           if (!isRunning) return@launch
@@ -978,39 +999,51 @@ jobs:
                               ?: researchResult.optJSONArray("steps")?.optJSONObject(0)
                           if (initStep != null) {
                               executeSingleActionOnPhone(initStep)
-                              delay(2200)
+                              delay(2300)
                           }
                       } else if (isResumeWithCorrection) {
                           speakOut("ठीक है, आपकी बात मानकर रास्ता बदल रहा हूँ", forceSpeak = true)
                       }
 
+                      // 2. DECISION + ACT + REFLECTION LOOP (Mobile-Agent-v2 + AutoDroid + AppAgent SoM)
                       var stepCount = 0
                       var stuckCount = 0
-                      var lastScreenHash = ""
+                      var previousHtmlDom = ""
+                      var lastActionSignature = "None"
 
                       while (isRunning && stepCount < 35) {
                           stepCount++
                           statusTv.setTextColor(Color.parseColor("#60A5FA"))
-                          statusTv.text = "🧠 Step #$stepCount: स्क्रीन और पॉपअप चेक कर रहा हूँ..."
+                          statusTv.text = "🧠 Step #$stepCount: HTML DOM और पॉपअप पढ़ रहा हूँ..."
                           delay(400)
 
-                          val liveScreen = readScreenElements()
-                          val structural = liveScreen.replace(Regex("\\d+:\\d+"), "").replace(Regex("\\d+%"), "")
-                          val curHash = structural.hashCode().toString()
-                          if (curHash == lastScreenHash) stuckCount++ else { stuckCount = 0; lastScreenHash = curHash }
+                          val currentHtmlDom = readScreenAsHtmlDom()
+                          val reflectionNote = computeScreenReflection(previousHtmlDom, currentHtmlDom, lastActionSignature)
 
-                          val screenshotB64 = if (stuckCount >= 2 || liveScreen.lines().size < 4) captureScreenBase64WithGrid() else null
-                          val appsList = if (stepCount <= 2 || liveScreen.contains("launcher")) installedApps else "Use open_app if needed"
+                          if (reflectionNote.startsWith("⚠️")) {
+                              stuckCount++
+                              failedTargets.add(lastActionSignature)
+                          } else {
+                              stuckCount = 0
+                          }
 
-                          val decision = universalBrainThinkNextStep(
+                          // Trigger AppAgent Set-of-Mark [#ID] visual screenshot when stuck or on canvas/game screen
+                          val somScreenshotB64 = if (stuckCount >= 1 || currentHtmlDom.lines().size < 5) {
+                              captureScreenBase64WithSoM()
+                          } else null
+
+                          val appsList = if (stepCount <= 2 || currentHtmlDom.contains("launcher")) installedApps else "Use open_app if needed"
+
+                          val decision = openSourceCoreBrainDecision(
                               goal = currentGoal,
                               userCorrection = liveUserCorrection,
                               researchedInfo = researchedContext,
+                              reflectionNote = reflectionNote,
                               vaultSummary = vaultSummary,
                               deviceContext = getLiveDeviceContext(),
                               installedApps = appsList,
-                              screen = liveScreen,
-                              screenshotB64 = screenshotB64,
+                              htmlDom = currentHtmlDom,
+                              somScreenshotB64 = somScreenshotB64,
                               stuckCount = stuckCount
                           )
                           if (!isRunning) break
@@ -1020,7 +1053,7 @@ jobs:
                           val chosenBtn = decision.optString("chosen_button_info", "")
                           val nextPlan = decision.optString("next_step_plan", "")
                           if (chosenBtn.isNotEmpty() || nextPlan.isNotEmpty()) {
-                              planPreviewTv.text = "👁️ दिखा: $obs\n🎯 एक्शन: $chosenBtn | 👉 आगे: $nextPlan"
+                              planPreviewTv.text = "👁️ DOM: $obs\n🎯 एक्शन: $chosenBtn | 👉 आगे: $nextPlan"
                           }
 
                           val action = decision.optString("action", "")
@@ -1045,7 +1078,9 @@ jobs:
 
                           if (speakMsg.isNotEmpty()) speakOut(speakMsg, forceSpeak = false)
 
+                          previousHtmlDom = currentHtmlDom
                           val singleStep = decision.optJSONArray("steps")?.optJSONObject(0) ?: decision
+                          lastActionSignature = "${singleStep.optString("action")}(#${singleStep.optInt("id", -1)} '${singleStep.optString("target")}')"
                           executeSingleActionOnPhone(singleStep)
                       }
 
@@ -1165,62 +1200,69 @@ jobs:
                   }
               }
 
-              private suspend fun universalBrainThinkNextStep(
-                  goal: String, userCorrection: String, researchedInfo: String, vaultSummary: String,
-                  deviceContext: String, installedApps: String, screen: String, screenshotB64: String?, stuckCount: Int
+              // Open-Source Core Decision Agent (AutoDroid HTML DOM + Mobile-Agent-v2 Reflection + AppAgent SoM)
+              private suspend fun openSourceCoreBrainDecision(
+                  goal: String,
+                  userCorrection: String,
+                  researchedInfo: String,
+                  reflectionNote: String,
+                  vaultSummary: String,
+                  deviceContext: String,
+                  installedApps: String,
+                  htmlDom: String,
+                  somScreenshotB64: String?,
+                  stuckCount: Int
               ): JSONObject = withContext(Dispatchers.IO) {
                   val dm = resources.displayMetrics
                   val corr = if (userCorrection.isNotBlank()) "🚨 USER CORRECTION: \"$userCorrection\" -> OBEY IMMEDIATELY!" else "None"
                   val prompt = """
-                      You are AI Phone Commander 19.0 — A Universal Autonomous Android Agent with Human-like Visual Verification.
+                      You are AI Phone Commander 20.0 (Powered by AutoDroid HTML DOM + AppAgent SoM + Mobile-Agent-v2 Reflection).
                       SCREEN: ${dm.widthPixels}x${dm.heightPixels} | CONTEXT: $deviceContext
                       USER GOAL: "$goal" | LIVE CORRECTION: $corr
                       RESEARCHED FACTS: "$researchedInfo"
+                      MOBILE-AGENT-V2 REFLECTION ON LAST STEP: "$reflectionNote"
+                      BLACKLISTED ACTIONS: ${failedTargets.joinToString(", ")}
                       USER VAULT: "$vaultSummary" | APPS: $installedApps
-                      PREVIOUS ACTIONS TAKEN: ${history.takeLast(6).joinToString(" -> ")}
-                      STUCK_COUNT: $stuckCount
+                      ACTION HISTORY: ${history.takeLast(6).joinToString(" -> ")}
 
-                      CURRENT LIVE SCREEN (Top-most dialog/popup windows are listed FIRST):
-                      $screen
+                      AUTODROID LIVE HTML DOM (Top-most `<dialog>` popup windows appear FIRST before `<screen>`):
+                      $htmlDom
 
-                      UNIVERSAL AUTONOMOUS RULES (APPLY TO EVERY APP ON THE PHONE):
-                      1. OBSERVE & VERIFY FIRST:
-                         - Never assume your previous click finished the job! Read CURRENT LIVE SCREEN carefully.
-                         - Did the previous click open a popup, dialog, permission request, radio-button choice (like "Over any network" / "किसी भी नेटवर्क पर" vs "Wi-Fi"), or confirmation button ("OK" / "ठीक है" / "Allow" / "Continue" / "Accept")?
-                         - If an option is `[CHECKED:OFF]` (like "Over any network") and needs to be selected before clicking "OK", click that option FIRST! If it is already `[CHECKED:ON]`, click the "OK" / confirmation button!
+                      CORE RULES FOR 100% PERFECTION:
+                      1. HANDLE `<dialog>` POPUPS FIRST:
+                         - If AUTODROID LIVE HTML DOM contains a `<dialog>` block, a popup/dialog is open on top of the app!
+                         - If `<dialog>` has `<radio checked="false">` options (like "Over any network" / "किसी भी नेटवर्क पर") and a confirmation `<button>` ("OK" / "ठीक है"), click the `<radio>` option FIRST to make it `checked="true"`, and in the next step click the confirmation `<button>`!
+                         - If the desired `<radio>` is already `checked="true"`, immediately click the confirmation `<button>` ("OK" / "ठीक है" / "Allow" / "Continue").
                       2. STRICT COMPLETION PROOF (WHEN TO RETURN "done"):
-                         - For downloading/installing an app: DO NOT return `"done"` just because you clicked "Install". Only return `"done"` when the screen shows proof that download actually started (e.g., `"Cancel"`, `"Pending..."`, `"%"`, or `"Uninstall"` button appears, and NO popup dialog is blocking).
-                         - For playing a video/song: DO NOT return `"done"` on the search results list! Click the actual video card (ignoring `[AD_SKIP]` and Shorts) and only return `"done"` once the video player page is open.
-                         - For answering a question / reading info: Read the screen or RESEARCHED FACTS and return `"action": "chat_reply"` with the complete, helpful Hindi answer in `"message"`.
-                      3. IF STUCK (STUCK_COUNT >= 1):
-                         - Do NOT repeat the exact same `#id` or `(x, y)` that failed in PREVIOUS ACTIONS TAKEN. Try an alternative element, `hide_keyboard`, `scroll_down`, or `direct_intent`.
-                      4. ONE ACTION AT A TIME:
-                         - Output strictly the single most accurate next action so we can re-verify the screen immediately after it!
-                         - Available actions: `click`, `double_tap`, `long_press`, `type`, `write_content`, `open_app`, `direct_intent` (`youtube_search`, `play_store_search`, `web_search`, `open_url`, `dial`, `call_contact`, `whatsapp_direct`, `maps_nav`, `set_alarm`, `upi_pay`, `share_text`), `scroll_down`, `scroll_up`, `fast_scroll`, `scroll_loop`, `swipe_left`, `swipe_right`, `pinch_zoom`, `drag_and_drop`, `set_slider`, `hide_keyboard`, `system_control`, `back`, `home`, `wait`, `chat_reply`, `ask_user`, `done`.
+                         - For app installation: Never return `"done"` right after clicking "Install". Wait and verify in the next step that no `<dialog>` is blocking and the screen shows `<button>Cancel</button>`, `Pending`, `%`, or `Uninstall`.
+                         - For playing a YouTube video: Never return `"done"` on the search results list. Click the real video `<button>` (skip `<ad_skip>` and Shorts) and return `"done"` only when the video player opens.
+                         - For questions/information: Return `"action": "chat_reply"` with the complete Hindi answer in `"message"`.
+                      3. OBEY REFLECTION:
+                         - Read `MOBILE-AGENT-V2 REFLECTION ON LAST STEP`. If it warns that your last action did not change the screen, do NOT repeat that `#id`.
 
                       Return ONLY 1 valid JSON object:
                       {
-                        "screen_observation": "What is currently visible on screen/popup",
-                        "chosen_button_info": "#ID and name of element to act on now",
-                        "next_step_plan": "What we will verify or do in the step after this",
+                        "screen_observation": "Brief summary of current HTML DOM / active <dialog>",
+                        "chosen_button_info": "#ID and tag/name of element to act on",
+                        "next_step_plan": "What we expect to happen next",
                         "action": "click",
-                        "id": 5,
-                        "target": "Exact text of button/option",
+                        "id": 4,
+                        "target": "Exact text inside the HTML tag",
                         "x": 540,
                         "y": 900,
                         "text": "",
                         "press_enter": true,
-                        "reason": "Short Hindi reason for current action",
+                        "reason": "Short Hindi reason",
                         "message": "Full Hindi message if done/chat_reply/ask_user",
                         "speak": "Short NEW Hindi voice update"
                       }
                   """.trimIndent()
-                  callGeminiAPI(prompt, useGoogleSearch = false, base64Image = screenshotB64)
+                  callGeminiAPI(prompt, useGoogleSearch = false, base64Image = somScreenshotB64)
               }
 
               private suspend fun answerOrResearchWithGoogle(rawCommand: String, vaultSummary: String, installedApps: String, currentPkg: String): JSONObject = withContext(Dispatchers.IO) {
                   val prompt = """
-                      You are the Universal Research & Knowledge Brain of AI Phone Commander 19.0 with Live Google Search.
+                      You are the Planner & Knowledge Agent of AI Phone Commander 20.0 with Live Google Search.
                       USER COMMAND: "$rawCommand"
                       CONTEXT: ${getLiveDeviceContext()} | CURRENT APP: "$currentPkg"
 
@@ -1228,9 +1270,9 @@ jobs:
                       1. IF USER IS ASKING A QUESTION OR SEEKING INFORMATION (even if they said "search karo" / "pata karo" / "kaise karein"):
                          - Use Google Search to find the complete, accurate answer.
                          - Return `"action": "chat_reply"` with a detailed, helpful Hindi `"message"`, `"speak"`, and `"next_step_advice"`.
-                      2. IF USER WANTS TO PERFORM A PHONE ACTION THAT NEEDS WEB FACTS FIRST (e.g., "Honey Bunny ka naya episode chalao"):
-                         - Use Google Search to find the exact episode number/title.
-                         - Return `"action": "continue_on_phone"`, `"researched_info": "exact title/facts"`, and `"first_step"` to launch the right app/search (`direct_intent` with `youtube_search` or `play_store_search`), after which the Universal Screen Loop will visually verify and complete the rest!
+                      2. IF USER WANTS TO PERFORM A PHONE ACTION (e.g., "Honey Bunny ka naya episode chalao" or "Free Fire download karo"):
+                         - Use Google Search if needed to find the exact episode number/title.
+                         - Return `"action": "continue_on_phone"`, `"researched_info": "exact title/facts"`, and `"first_step"` (`direct_intent` with `youtube_search` or `play_store_search`), after which the HTML DOM + Reflection Loop will visually verify and complete all popups and clicks!
 
                       Return ONLY valid JSON:
                       {
@@ -1384,12 +1426,17 @@ jobs:
                   return JSONObject().put("action", "wait")
               }
 
-              private suspend fun captureScreenBase64WithGrid(): String? {
+              // AppAgent Set-of-Mark (SoM) Visual Tagger: Draws red bounding boxes & [#ID] badges directly onto the screenshot!
+              private suspend fun captureScreenBase64WithSoM(): String? {
                   if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
                   val now = System.currentTimeMillis()
                   if (now - lastScreenshotTime < 1500L) return null
                   lastScreenshotTime = now
                   val dm = resources.displayMetrics
+                  val scaleX = 480f / dm.widthPixels.toFloat()
+                  val scaleY = 960f / dm.heightPixels.toFloat()
+                  val boundsSnapshot = HashMap(nodeBoundsMap)
+
                   val deferred = CompletableDeferred<String?>()
                   try {
                       setWindowGhostMode(true); delay(50)
@@ -1404,15 +1451,37 @@ jobs:
                                       val scaled = Bitmap.createScaledBitmap(soft, 480, 960, true)
                                       soft.recycle()
                                       val canvas = Canvas(scaled)
-                                      val paint = Paint().apply { color = Color.argb(120, 0, 245, 212); strokeWidth = 1.5f; textSize = 17f; isAntiAlias = true }
-                                      for (i in 1..3) {
-                                          val gy = (960 * i) / 4f
-                                          val realY = (dm.heightPixels * i) / 4
-                                          canvas.drawLine(0f, gy, 480f, gy, paint)
-                                          canvas.drawText("Y=$realY", 8f, gy - 5f, paint)
+                                      val boxPaint = Paint().apply {
+                                          color = Color.argb(200, 239, 68, 68)
+                                          style = Paint.Style.STROKE
+                                          strokeWidth = 2f
+                                          isAntiAlias = true
+                                      }
+                                      val bgPaint = Paint().apply {
+                                          color = Color.argb(220, 15, 23, 42)
+                                          style = Paint.Style.FILL
+                                      }
+                                      val txtPaint = Paint().apply {
+                                          color = Color.parseColor("#00F5D4")
+                                          textSize = 15f
+                                          typeface = Typeface.DEFAULT_BOLD
+                                          isAntiAlias = true
+                                      }
+                                      for ((id, r) in boundsSnapshot) {
+                                          val left = r.left * scaleX
+                                          val top = r.top * scaleY
+                                          val right = r.right * scaleX
+                                          val bottom = r.bottom * scaleY
+                                          canvas.drawRect(left, top, right, bottom, boxPaint)
+                                          val tag = "#$id"
+                                          val tw = txtPaint.measureText(tag)
+                                          val bx = left.coerceIn(2f, 475f - tw)
+                                          val by = (top - 3f).coerceIn(16f, 955f)
+                                          canvas.drawRect(bx - 2f, by - 14f, bx + tw + 4f, by + 3f, bgPaint)
+                                          canvas.drawText(tag, bx, by, txtPaint)
                                       }
                                       val out = ByteArrayOutputStream()
-                                      scaled.compress(Bitmap.CompressFormat.JPEG, 55, out)
+                                      scaled.compress(Bitmap.CompressFormat.JPEG, 58, out)
                                       scaled.recycle()
                                       deferred.complete(Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP))
                                   } else deferred.complete(null)
@@ -1452,7 +1521,7 @@ jobs:
                   val keys = keywordsPipe.split("|", ",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
                   val start = System.currentTimeMillis()
                   while (System.currentTimeMillis() - start < timeoutMs && isRunning) {
-                      for (root in getAllActiveAppRoots()) {
+                      for ((_, root) in getAllActiveWindowsSorted()) {
                           val found = searchKeywordInTree(root, keys)
                           if (found != null) return found
                       }
@@ -1644,9 +1713,11 @@ jobs:
                   return list.first()
               }
 
-              // Universal Multi-Window Reader: Sorts smaller dialog/popup windows FIRST so they are never missed!
-              private fun getAllActiveAppRoots(): List<AccessibilityNodeInfo> {
-                  val windowPairs = mutableListOf<Pair<Int, AccessibilityNodeInfo>>()
+              // Returns pairs of (isDialogPopup, rootNode) sorted so smaller popup dialogs come FIRST!
+              private fun getAllActiveWindowsSorted(): List<Pair<Boolean, AccessibilityNodeInfo>> {
+                  val dm = resources.displayMetrics
+                  val fullScreenArea = dm.widthPixels * dm.heightPixels
+                  val items = mutableListOf<Triple<Int, Boolean, AccessibilityNodeInfo>>()
                   try {
                       for (w in windows) {
                           if (w.type == AccessibilityWindowInfo.TYPE_APPLICATION || w.type == AccessibilityWindowInfo.TYPE_SYSTEM) {
@@ -1656,28 +1727,30 @@ jobs:
                                   val rect = Rect()
                                   w.getBoundsInScreen(rect)
                                   val area = rect.width() * rect.height()
-                                  windowPairs.add(Pair(area, r))
+                                  val isDialog = area < (fullScreenArea * 0.78)
+                                  items.add(Triple(area, isDialog, r))
                               }
                           }
                       }
                   } catch (_: Exception) {}
-                  // Smaller popup/dialog windows come first so their elements get top priority IDs!
-                  val sorted = windowPairs.sortedBy { it.first }.map { it.second }.toMutableList()
+                  val sorted = items.sortedBy { it.first }.map { Pair(it.second, it.third) }.toMutableList()
                   if (sorted.isEmpty()) {
-                      rootInActiveWindow?.let { sorted.add(it) }
+                      rootInActiveWindow?.let { sorted.add(Pair(false, it)) }
                   }
                   return sorted
               }
 
-              private fun readScreenElements(): String {
+              // AutoDroid HTML/DOM Screen Serializer: Converts Android UI & Dialog Popups into clean HTML tags!
+              private fun readScreenAsHtmlDom(): String {
                   nodeMap.clear()
-                  val roots = getAllActiveAppRoots()
-                  if (roots.isEmpty()) return "Screen khali hai"
+                  nodeBoundsMap.clear()
+                  val winList = getAllActiveWindowsSorted()
+                  if (winList.isEmpty()) return "<screen empty=\"true\" />"
 
                   val dm = resources.displayMetrics
-                  val list = mutableListOf<String>()
-                  val pkg = roots.first().packageName?.toString() ?: "unknown"
-                  list.add("App:$pkg | Windows:${roots.size} | KB:${if (isKeyboardVisibleOnScreen()) "OPEN" else "CLOSED"} | Res:${dm.widthPixels}x${dm.heightPixels}")
+                  val lines = mutableListOf<String>()
+                  val mainPkg = winList.last().second.packageName?.toString() ?: "unknown"
+                  lines.add("<!-- App:$mainPkg | Windows:${winList.size} | KB:${if (isKeyboardVisibleOnScreen()) "OPEN" else "CLOSED"} -->")
                   var nextId = 1
 
                   fun traverse(node: AccessibilityNodeInfo?, parentCtx: String) {
@@ -1690,19 +1763,18 @@ jobs:
 
                       val isClick = node.isClickable || (node.parent?.isClickable == true)
                       val isEdit = node.isEditable
-                      val isPass = node.isPassword
-                      val isCheck = node.isCheckable
+                      val isCheck = node.isCheckable || (node.className?.toString()?.contains("RadioButton", true) == true)
                       val isScroll = node.isScrollable
-                      val isSeek = node.rangeInfo != null
 
                       var label = when {
                           rawText.isNotEmpty() -> rawText
                           desc.isNotEmpty() -> desc
-                          hint.isNotEmpty() -> "Hint:$hint"
+                          hint.isNotEmpty() -> hint
                           isClick || isCheck -> collectSubtreeText(node, 2)
                           else -> ""
                       }
 
+                      // Grab sibling label inside radio/checkbox row
                       if (label.isEmpty() && isCheck && node.parent != null) {
                           val p = node.parent
                           for (i in 0 until p.childCount) {
@@ -1713,34 +1785,45 @@ jobs:
                       }
 
                       val cx = rect.centerX(); val cy = rect.centerY()
-                      if (cx in 2..(dm.widthPixels - 2) && cy in 75..(dm.heightPixels - 10) && rect.width() > 10 && rect.height() > 10) {
-                          if (label.isNotEmpty() || isEdit || isPass || isCheck || isSeek || (isClick && idName.isNotEmpty())) {
+                      if (cx in 2..(dm.widthPixels - 2) && cy in 70..(dm.heightPixels - 10) && rect.width() > 10 && rect.height() > 10) {
+                          if (label.isNotEmpty() || isEdit || isCheck || (isClick && idName.isNotEmpty())) {
                               val tag = when {
-                                  isAdElement(node) -> "[AD_SKIP]"
-                                  isPass -> "[PASSWORD_BOX]"
-                                  isEdit -> "[INPUT_BOX]"
-                                  isCheck -> if (node.isChecked) "[CHECKED:ON]" else "[CHECKED:OFF]"
-                                  isSeek -> "[SEEKBAR]"
-                                  isClick -> "[BUTTON]"
-                                  else -> "[TEXT]"
+                                  isAdElement(node) -> "ad_skip"
+                                  isEdit -> "input"
+                                  isCheck -> "radio"
+                                  isClick -> "button"
+                                  else -> "text"
                               }
-                              val flags = buildString {
-                                  if (!node.isEnabled) append("[DISABLED]")
-                                  if (node.isSelected) append("[SELECTED]")
-                                  if (isScroll) append("[SCROLLABLE]")
+                              val attrs = buildString {
+                                  if (isCheck) append(" checked=\"${node.isChecked}\"")
+                                  if (isEdit && hint.isNotEmpty()) append(" hint=\"${hint.replace("\"", "'").take(30)}\"")
+                                  if (!node.isEnabled) append(" disabled=\"true\"")
+                                  if (isScroll) append(" scrollable=\"true\"")
+                                  if (idName.isNotEmpty()) append(" res=\"$idName\"")
+                                  append(" xy=\"$cx,$cy\"")
                               }
-                              val clean = label.replace("\n", " ").replace("\"", "'").take(95)
-                              val ctx = if (parentCtx.isNotEmpty() && clean.length < 18 && !parentCtx.equals(clean, true)) " [In:${parentCtx.take(20)}]" else ""
+                              val clean = label.replace("\n", " ").replace("<", "").replace(">", "").take(95)
                               val id = nextId++
                               nodeMap[id] = node
-                              list.add("#$id $tag$flags '$clean'$ctx${if (idName.isNotEmpty()) " ($idName)" else ""} at (x=$cx, y=$cy)")
+                              if (isClick || isEdit || isCheck) {
+                                  nodeBoundsMap[id] = Rect(rect)
+                              }
+                              lines.add("  <$tag id=\"$id\"$attrs>$clean</$tag>")
                           }
                       }
                       val nextCtx = if (label.length in 4..38) label else parentCtx
                       for (i in 0 until node.childCount) traverse(node.getChild(i), nextCtx)
                   }
-                  for (r in roots) traverse(r, "")
-                  return list.joinToString("\n")
+
+                  for ((idx, pair) in winList.withIndex()) {
+                      val isDialog = pair.first
+                      val rootNode = pair.second
+                      val wTag = if (isDialog) "dialog_popup" else "main_screen"
+                      lines.add("<$wTag index=\"${idx + 1}\">")
+                      traverse(rootNode, "")
+                      lines.add("</$wTag>")
+                  }
+                  return lines.joinToString("\n")
               }
 
               private fun pauseForUser(alertText: String) {
@@ -1754,7 +1837,7 @@ jobs:
 
               private fun stopAgent(finalText: String) {
                   isRunning = false
-                  agentJob?.cancel(); nodeMap.clear()
+                  agentJob?.cancel(); nodeMap.clear(); nodeBoundsMap.clear()
                   setWindowGhostMode(false)
                   statusTv.setTextColor(Color.parseColor("#00F5D4"))
                   statusTv.text = finalText
@@ -1930,7 +2013,7 @@ jobs:
 
               override fun onDestroy() {
                   if (instance == this) instance = null
-                  agentJob?.cancel(); nodeMap.clear()
+                  agentJob?.cancel(); nodeMap.clear(); nodeBoundsMap.clear()
                   floatingLayout?.let { try { windowManager.removeView(it) } catch (_: Exception) {} }
                   tts?.shutdown()
                   super.onDestroy()
