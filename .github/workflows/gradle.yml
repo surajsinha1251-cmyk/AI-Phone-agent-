@@ -58,8 +58,8 @@ jobs:
                   applicationId "com.ai.phoneagent"
                   minSdk 26
                   targetSdk 34
-                  versionCode 17
-                  versionName "12.0-FULL"
+                  versionCode 16
+                  versionName "12.0-COMPACT"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -147,98 +147,48 @@ jobs:
                   val layout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL ; setPadding(42, 50, 42, 50) }
 
                   fun addLabel(txt: String, size: Float = 15f, color: String = "#38BDF8") {
-                      layout.addView(TextView(this@MainActivity).apply { text = txt ; textSize = size ; setTextColor(Color.parseColor(color)) ; setPadding(0, 16, 0, 8) })
+                      layout.addView(TextView(this).apply { text = txt ; textSize = size ; setTextColor(Color.parseColor(color)) ; setPadding(0, 16, 0, 8) })
                   }
                   fun makeInput(hintTxt: String, key: String): EditText {
-                      val et = EditText(this@MainActivity).apply { hint = hintTxt ; setHintTextColor(Color.GRAY) ; setTextColor(Color.WHITE) ; setText(prefs.getString(key, "")) }
-                      layout.addView(et)
-                      return et
+                      return EditText(this).apply { hint = hintTxt ; setHintTextColor(Color.GRAY) ; setTextColor(Color.WHITE) ; setText(prefs.getString(key, "")) ; layout.addView(this) }
                   }
                   fun addBtn(txt: String, onClick: () -> Unit) {
-                      layout.addView(Button(this@MainActivity).apply { text = txt ; setOnClickListener { onClick() } })
+                      layout.addView(Button(this).apply { text = txt ; setOnClickListener { onClick() } })
                   }
 
-                  addLabel("👑 AI Phone Commander 12.0\n(Full Genius Brain + Free Flash/Live Models)", 19f, "#38BDF8")
-                  val apiInput = makeInput("Yahan Gemini API Key daalein (AIzaSy...)", "apiKey")
-                  addBtn("💾 Save & Verify Gemini API Key") {
+                  addLabel("👑 AI Phone Commander 12.0 (Flash & Live)", 19f, "#38BDF8")
+                  val apiInput = makeInput("Yahan Gemini API Key daalein (AIza...)", "apiKey")
+                  addBtn("💾 Save & Verify Key") {
                       val raw = apiInput.text.toString()
-                      val extracted = Regex("AIza[0-9A-Za-z_-]{30,45}").findAll(raw).map { it.value }.toList()
-                      val finalKey = if (extracted.isNotEmpty()) extracted.joinToString(",") else raw.replace("\\s".toRegex(), "")
+                      val finalKey = raw.replace("\\s".toRegex(), "")
                       prefs.edit().putString("apiKey", finalKey).apply()
                       apiInput.setText(finalKey)
-                      Toast.makeText(this@MainActivity, if (finalKey.startsWith("AIza")) "✅ Sahi API Key Save Ho Gayi!" else "⚠️ Key 'AIza' se shuru honi chahiye!", Toast.LENGTH_SHORT).show()
+                      Toast.makeText(this, if(finalKey.startsWith("AIza")) "✅ Key Saved!" else "⚠️ Check Key format!", Toast.LENGTH_SHORT).show()
                   }
-
-                  addBtn("🎤 1. Enable Voice Mic Permission") {
-                      if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 101) else Toast.makeText(this@MainActivity, "Mic ON hai!", Toast.LENGTH_SHORT).show()
+                  addBtn("🎤 1. Mic Permission") {
+                      if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 101) else Toast.makeText(this, "Mic ON", Toast.LENGTH_SHORT).show()
                   }
-                  addBtn("🪟 2. Enable Floating Window Permission") {
-                      if (!Settings.canDrawOverlays(this@MainActivity)) startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) else Toast.makeText(this@MainActivity, "Floating ON hai!", Toast.LENGTH_SHORT).show()
+                  addBtn("🪟 2. Floating Window Permission") {
+                      if (!Settings.canDrawOverlays(this)) startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) else Toast.makeText(this, "Floating ON", Toast.LENGTH_SHORT).show()
                   }
                   addBtn("🔋 3. Disable Battery Restriction") {
                       try {
                           val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-                          if (!pm.isIgnoringBatteryOptimizations(packageName)) startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))) else Toast.makeText(this@MainActivity, "Battery Unrestricted ON!", Toast.LENGTH_SHORT).show()
+                          if (!pm.isIgnoringBatteryOptimizations(packageName)) startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))) else Toast.makeText(this, "Battery Unrestricted", Toast.LENGTH_SHORT).show()
                       } catch (e: Exception) {}
                   }
-                  addBtn("🤖 4. Enable Accessibility Service (Main Haath)") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                  addBtn("🤖 4. Accessibility Service") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
 
-                  addLabel("🔐 Personal Data Vault (Auto Form & UPI Fill):", 15f, "#4ADE80")
-                  val vName = makeInput("Full Name (Aapka Naam)", "vaultName")
+                  addLabel("🔐 Personal Data Vault:", 15f, "#4ADE80")
+                  val vName = makeInput("Full Name", "vaultName")
                   val vContact = makeInput("Phone & Email", "vaultContact")
-                  val vUpi = makeInput("UPI ID (name@upi)", "vaultUpi")
-                  val vSkills = makeInput("Skills / Work", "vaultSkills")
-                  val vDocs = makeInput("Address / Docs / Rules", "userMemory")
-
-                  addBtn("🔐 Save Personal Vault") {
-                      prefs.edit()
-                          .putString("vaultName", vName.text.toString().trim())
-                          .putString("vaultContact", vContact.text.toString().trim())
-                          .putString("vaultUpi", vUpi.text.toString().trim())
-                          .putString("vaultSkills", vSkills.text.toString().trim())
-                          .putString("userMemory", vDocs.text.toString().trim())
-                          .apply()
-                      Toast.makeText(this@MainActivity, "Vault Saved!", Toast.LENGTH_SHORT).show()
+                  val vUpi = makeInput("UPI ID", "vaultUpi")
+                  val vSkills = makeInput("Skills", "vaultSkills")
+                  val vDocs = makeInput("Address / Rules", "userMemory")
+                  addBtn("🔐 Save Vault") {
+                      prefs.edit().putString("vaultName", vName.text.toString().trim()).putString("vaultContact", vContact.text.toString().trim()).putString("vaultUpi", vUpi.text.toString().trim()).putString("vaultSkills", vSkills.text.toString().trim()).putString("userMemory", vDocs.text.toString().trim()).apply()
+                      Toast.makeText(this, "Vault Saved!", Toast.LENGTH_SHORT).show()
                   }
-
-                  val backupRow = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.HORIZONTAL }
-                  backupRow.addView(Button(this@MainActivity).apply {
-                      text = "📤 Copy Backup"
-                      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                      setOnClickListener {
-                          val obj = JSONObject().apply {
-                              listOf("apiKey", "vaultName", "vaultContact", "vaultUpi", "vaultSkills", "userMemory").forEach { k -> put(k, prefs.getString(k, "")) }
-                          }
-                          val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                          cb.setPrimaryClip(ClipData.newPlainText("AIBackup", obj.toString()))
-                          Toast.makeText(this@MainActivity, "Backup Copied!", Toast.LENGTH_SHORT).show()
-                      }
-                  })
-                  backupRow.addView(Button(this@MainActivity).apply {
-                      text = "📥 Restore Backup"
-                      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                      setOnClickListener {
-                          try {
-                              val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                              val txt = cb.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
-                              val obj = JSONObject(txt)
-                              val ed = prefs.edit()
-                              listOf("apiKey", "vaultName", "vaultContact", "vaultUpi", "vaultSkills", "userMemory").forEach { k -> ed.putString(k, obj.optString(k, "")) }
-                              ed.apply() ; recreate()
-                              Toast.makeText(this@MainActivity, "Backup Restored!", Toast.LENGTH_SHORT).show()
-                          } catch (e: Exception) {
-                              Toast.makeText(this@MainActivity, "Pehle Backup Copy karein!", Toast.LENGTH_SHORT).show()
-                          }
-                      }
-                  })
-                  layout.addView(backupRow)
-
-                  addLabel("⚡ Active Free Flash & Live Models:", 14f, "#FBBF24")
-                  layout.addView(TextView(this@MainActivity).apply {
-                      val logs = prefs.getString("brainLogs", "No logs yet.")
-                      text = "• gemini-3.8-live-extension-thinking\n• gemini-3.8-live\n• gemini-3-flash-live\n• gemini-3.8-flash\n• gemini-3.7-flash\n• gemini-3.6-flash\n• gemini-3.5-flash\n• gemini-3.5-flash-lite\n• gemini-3-flash-preview\n• gemini-3.1-flash-lite\n• gemini-2.5-flash\n• gemini-2.5-flash-lite\n• gemini-2.0-flash\n\n📜 Recent Brain Logs:\n$logs"
-                      setTextColor(Color.LTGRAY) ; textSize = 11.5f
-                  })
 
                   scroll.addView(layout)
                   setContentView(scroll)
@@ -274,18 +224,13 @@ jobs:
               }
               private fun launchVoice() {
                   try {
-                      val promptText = if (isInterruptMode) "✋ AI ruk gaya hai! Bataiye ab kya karna hai?" else "👑 Boliye, kya kaam karna hai?"
                       val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                           putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                           putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
-                          putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("en-IN", "hi-IN"))
-                          putExtra(RecognizerIntent.EXTRA_PROMPT, promptText)
+                          putExtra(RecognizerIntent.EXTRA_PROMPT, "👑 Boliye, kya kaam hai?")
                       }
                       startActivityForResult(intent, 200)
-                  } catch (e: Exception) {
-                      Toast.makeText(this, "Voice app nahi mila!", Toast.LENGTH_SHORT).show()
-                      finish()
-                  }
+                  } catch (e: Exception) { finish() }
               }
               override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
                   super.onActivityResult(requestCode, resultCode, data)
@@ -317,6 +262,7 @@ jobs:
           import android.net.NetworkCapabilities
           import android.net.Uri
           import android.os.*
+          import android.provider.Settings
           import android.speech.tts.TextToSpeech
           import android.text.TextUtils
           import android.util.Base64
@@ -371,24 +317,16 @@ jobs:
               private var tts: TextToSpeech? = null
 
               private val flashAndLiveModels = listOf(
-                  "gemini-2.5-flash",
-                  "gemini-2.5-flash-lite",
-                  "gemini-3-flash-preview",
-                  "gemini-3.1-flash-lite",
-                  "gemini-3.8-live-extension-thinking",
                   "gemini-3.8-live",
-                  "gemini-3-flash-live",
                   "gemini-3.8-flash",
-                  "gemini-3.7-flash",
-                  "gemini-3.6-flash",
                   "gemini-3.5-flash",
                   "gemini-3.5-flash-lite",
-                  "gemini-2.0-flash",
-                  "gemini-1.5-flash"
+                  "gemini-3-flash-preview",
+                  "gemini-2.5-flash",
+                  "gemini-2.0-flash"
               )
               private val deadModels = mutableSetOf<String>()
               private var currentModelIndex = 0
-              private var currentApiKeyIndex = 0
 
               override fun onServiceConnected() {
                   super.onServiceConnected()
@@ -402,19 +340,8 @@ jobs:
                   createMovableFloatingBar()
               }
 
-              private fun saveBrainLog(entry: String) {
-                  try {
-                      val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
-                      val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-                      val old = prefs.getString("brainLogs", "") ?: ""
-                      prefs.edit().putString("brainLogs", ("[$time] $entry\n" + old).take(900)).apply()
-                  } catch (e: Exception) {}
-              }
-
               private fun speakOut(text: String) {
                   if (!isVoiceEnabled || text.isBlank()) return
-                  val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                  if (am.isMusicActive && !text.contains("रोक") && !text.contains("मदद")) return
                   tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "AgentTTS")
               }
 
@@ -423,20 +350,12 @@ jobs:
                       val now = System.currentTimeMillis()
                       if (now - lastVolDownTime < 650L) {
                           vibrateTick(120)
-                          triggerImmediateInterruptAndListen(true)
+                          triggerImmediateInterruptAndListen(openVoice = true)
                           return true
                       }
                       lastVolDownTime = now
                   }
                   return super.onKeyEvent(event)
-              }
-
-              override fun onConfigurationChanged(newConfig: Configuration) {
-                  super.onConfigurationChanged(newConfig)
-                  val view = floatingLayout ?: return
-                  val dm = resources.displayMetrics
-                  params.width = if (isMinimized && !isRunning) WindowManager.LayoutParams.WRAP_CONTENT else (dm.widthPixels * 0.96).toInt()
-                  try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
               }
 
               override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -454,7 +373,6 @@ jobs:
                       if (wasInterrupted && currentGoal.isNotBlank()) {
                           liveUserCorrection = spoken
                           history.add("USER_INTERRUPTED: \"$spoken\"")
-                          statusTv.setTextColor(Color.parseColor("#FBBF24"))
                           statusTv.text = "✋ सुधार: '$spoken'"
                           startGeniusAgent(true)
                       } else {
@@ -467,9 +385,7 @@ jobs:
               private fun triggerImmediateInterruptAndListen(openVoice: Boolean) {
                   tts?.stop() ; agentJob?.cancel() ; isRunning = false
                   setWindowGhostMode(false) ; autoCollapseBar(false)
-                  statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                  statusTv.text = "✋ AI रुक गया! बोलें या लिखें क्या सुधार करना है..."
-                  planPreviewTv.text = "💡 आपने काम के बीच में टोका है (पुराना काम याद है)"
+                  statusTv.text = "✋ AI रुका! बोलें क्या सुधार करना है..."
                   setTouchPassThrough(false)
                   if (openVoice) {
                       startActivity(Intent(this, VoiceActivity::class.java).apply {
@@ -490,7 +406,7 @@ jobs:
 
               private fun createMovableFloatingBar() {
                   windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-                  floatingLayout?.let { try { windowManager.removeView(it) } catch (e: Exception) {} }
+                  floatingLayout?.let { try { windowManager.removeView(it) } catch (ex: Exception) {} }
                   val dm = resources.displayMetrics
                   params = WindowManager.LayoutParams(
                       (dm.widthPixels * 0.96).toInt(), WindowManager.LayoutParams.WRAP_CONTENT,
@@ -508,40 +424,36 @@ jobs:
                   topRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL ; gravity = Gravity.CENTER_VERTICAL }
                   dragBtn = makePillButton("✥", "#1E293B")
                   var initX = 0; var initY = 0; var touchX = 0f; var touchY = 0f
-                  val dragListener = View.OnTouchListener { _, ev ->
+                  dragBtn.setOnTouchListener { _, ev ->
                       when (ev.action) {
                           MotionEvent.ACTION_DOWN -> { initX = params.x ; initY = params.y ; touchX = ev.rawX ; touchY = ev.rawY ; true }
                           MotionEvent.ACTION_MOVE -> {
                               val curDm = resources.displayMetrics
                               params.x = (initX + (ev.rawX - touchX).toInt()).coerceIn(0, curDm.widthPixels - 120)
                               params.y = (initY + (ev.rawY - touchY).toInt()).coerceIn(20, curDm.heightPixels - 160)
-                              try { windowManager.updateViewLayout(container, params) } catch (e: Exception) {}
+                              try { windowManager.updateViewLayout(container, params) } catch (ex: Exception) {}
                               true
                           }
                           else -> false
                       }
                   }
-                  dragBtn.setOnTouchListener(dragListener)
 
                   statusTv = TextView(this).apply {
                       text = "👑 AI 12.0 Ready: बोलें या लिखें!"
                       setTextColor(Color.parseColor("#4ADE80")) ; textSize = 11.5f ; maxLines = 2
                       ellipsize = TextUtils.TruncateAt.END ; setPadding(8, 0, 4, 0)
                       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                      setOnTouchListener(dragListener)
                   }
 
                   interruptBtn = makePillButton("✋", "#D97706").apply { setOnClickListener { triggerImmediateInterruptAndListen(true) } }
-                  vaultOpenBtn = makePillButton("⚙️", "#334155").apply {
-                      setOnClickListener { startActivity(Intent(this@AgentService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                  }
-                  stopBtn = makePillButton("⏹", "#DC2626").apply { setOnClickListener { stopAgent("⏹ आपने AI को रोक दिया।") } }
+                  vaultOpenBtn = makePillButton("⚙️", "#334155").apply { startActivity(Intent(this@AgentService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                  stopBtn = makePillButton("⏹", "#DC2626").apply { setOnClickListener { stopAgent("⏹ रोक दिया गया।") } }
                   minBtn = makePillButton("➖", "#475569").apply { setOnClickListener { autoCollapseBar(!isMinimized) } }
 
                   topRow.addView(dragBtn) ; topRow.addView(statusTv) ; topRow.addView(interruptBtn) ; topRow.addView(vaultOpenBtn) ; topRow.addView(stopBtn) ; topRow.addView(minBtn)
 
                   planPreviewTv = TextView(this).apply {
-                      text = "🎯 अगला कदम: आपके आदेश का इंतज़ार है..."
+                      text = "🎯 अगला कदम तैयार है..."
                       setTextColor(Color.parseColor("#93C5FD")) ; textSize = 10.5f ; maxLines = 2
                       ellipsize = TextUtils.TruncateAt.END ; setPadding(6, 4, 6, 2)
                   }
@@ -556,13 +468,7 @@ jobs:
                       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                       setOnTouchListener { _, ev ->
                           if (ev.action == MotionEvent.ACTION_DOWN) {
-                              if (isRunning) {
-                                  tts?.stop() ; agentJob?.cancel() ; isRunning = false
-                                  statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                                  statusTv.text = "✋ AI रुका है: सुधार लिखकर ▶ दबाएँ"
-                              }
-                              val curDm = resources.displayMetrics
-                              if (params.y > curDm.heightPixels * 0.42) params.y = (curDm.heightPixels * 0.25).toInt()
+                              if (isRunning) { tts?.stop() ; agentJob?.cancel() ; isRunning = false ; statusTv.text = "✋ AI रुका" }
                               setTouchPassThrough(false)
                           }
                           false
@@ -608,7 +514,7 @@ jobs:
                   } else {
                       WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                   }
-                  try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
+                  try { windowManager.updateViewLayout(view, params) } catch (ex: Exception) {}
               }
 
               private fun setWindowGhostMode(ghost: Boolean) {
@@ -619,7 +525,7 @@ jobs:
                       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                   }
                   view.alpha = if (ghost) 0.0f else 1.0f
-                  try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
+                  try { windowManager.updateViewLayout(view, params) } catch (ex: Exception) {}
               }
 
               private fun autoCollapseBar(collapse: Boolean) {
@@ -629,28 +535,23 @@ jobs:
                   planPreviewTv.visibility = if (collapse && !isRunning) View.GONE else View.VISIBLE
                   minBtn.text = if (collapse) "➕" else "➖"
                   setTouchPassThrough(true)
-                  try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
+                  try { windowManager.updateViewLayout(view, params) } catch (ex: Exception) {}
               }
 
               private fun getPersonalVaultSummary(): String {
                   val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
-                  return "Name: ${prefs.getString("vaultName","")} | Contact: ${prefs.getString("vaultContact","")} | UPI: ${prefs.getString("vaultUpi","")} | Skills: ${prefs.getString("vaultSkills","")} | Rules: ${prefs.getString("userMemory","")}"
+                  return "Name: ${prefs.getString("vaultName","")} | Contact: ${prefs.getString("vaultContact","")} | UPI: ${prefs.getString("vaultUpi","")} | Skills: ${prefs.getString("vaultSkills","")}"
               }
 
               private fun tryOfflineInstantReflex(goal: String): Boolean {
                   val g = goal.trim().lowercase()
                   when {
-                      g == "torch on" || g == "टॉर्च जलाओ" || g == "टॉर्च चालू करो" -> { executeSystemControl("torch_on") ; stopAgent("🔦 टॉर्च चालू कर दी गई है!") ; return true }
-                      g == "torch off" || g == "टॉर्च बंद करो" -> { executeSystemControl("torch_off") ; stopAgent("🔦 टॉर्च बंद कर दी गई है!") ; return true }
-                      g == "back" || g == "पीछे जाओ" -> { performGlobalAction(GLOBAL_ACTION_BACK) ; stopAgent("🔙 पीछे आ गए!") ; return true }
-                      g == "home" || g == "होम स्क्रीन" -> { performGlobalAction(GLOBAL_ACTION_HOME) ; stopAgent("🏠 होम स्क्रीन!") ; return true }
+                      g.contains("torch on") || g.contains("टॉर्च जलाओ") -> { executeSystemControl("torch_on") ; stopAgent("🔦 टॉर्च चालू!") ; return true }
+                      g.contains("torch off") || g.contains("टॉर्च बंद") -> { executeSystemControl("torch_off") ; stopAgent("🔦 टॉर्च बंद!") ; return true }
+                      g == "back" || g == "पीछे" -> { performGlobalAction(GLOBAL_ACTION_BACK) ; stopAgent("🔙 पीछे!") ; return true }
+                      g == "home" || g == "होम" -> { performGlobalAction(GLOBAL_ACTION_HOME) ; stopAgent("🏠 होम!") ; return true }
                   }
                   return false
-              }
-
-              private fun needsDeepWebResearch(cmd: String): Boolean {
-                  val lower = cmd.lowercase()
-                  return listOf("episode", "एपिसोड", "latest", "naya", "नया", "kamao", "कमाओ", "earning", "challenge", "चैलेंज", "price", "news", "research").any { lower.contains(it) }
               }
 
               private fun startGeniusAgent(isResumeWithCorrection: Boolean) {
@@ -664,492 +565,99 @@ jobs:
                       val vaultSummary = getPersonalVaultSummary()
                       val stepQueue = mutableListOf<JSONObject>()
 
-                      if (!isResumeWithCorrection && needsDeepWebResearch(currentGoal)) {
-                          statusTv.setTextColor(Color.parseColor("#38BDF8"))
-                          statusTv.text = "🔍 Live Google Search से सटीक जानकारी निकाल रहा हूँ..."
-                          val currentPkg = rootInActiveWindow?.packageName?.toString() ?: "home"
-                          val masterPlan = researchAndPlanWithAI(currentGoal, vaultSummary, installedApps, currentPkg)
-                          if (!isRunning) return@launch
-                          researchedContext = masterPlan.optString("researched_info", "")
-                          val speakMsg = masterPlan.optString("speak", "")
-                          if (speakMsg.isNotEmpty()) speakOut(speakMsg)
-                          val initialSteps = masterPlan.optJSONArray("steps")
-                          if (initialSteps != null) {
-                              for (i in 0 until initialSteps.length()) stepQueue.add(initialSteps.getJSONObject(i))
-                          }
-                      } else if (isResumeWithCorrection) {
-                          speakOut("ठीक है, आपकी बात मानकर रास्ता बदल रहा हूँ")
-                      } else {
-                          statusTv.setTextColor(Color.parseColor("#38BDF8"))
-                          statusTv.text = "⚡ Flash-Live Fast Track शुरू..."
+                      val step = JSONObject().put("action", "type").put("text", currentGoal).put("reason", "Goal execution")
+                      stepQueue.add(step)
+
+                      while (isRunning && stepQueue.isNotEmpty()) {
+                          val st = stepQueue.removeAt(0)
+                          executeLocalStepWithVerification(st)
+                          delay(1000)
                       }
-
-                      var aiConsultCount = 0
-                      var stuckCount = 0
-                      var lastScreenSig = ""
-
-                      while (isRunning) {
-                          while (stepQueue.isNotEmpty() && isRunning) {
-                              val step = stepQueue.removeAt(0)
-                              val act = step.optString("action", "")
-                              if (act == "done") {
-                                  val doneMsg = step.optString("message", "काम पूरा हो गया!")
-                                  speakOut(doneMsg) ; vibrateTick(280) ; stopAgent("✅ $doneMsg")
-                                  return@launch
-                              }
-                              if (act == "ask_user") {
-                                  val askMsg = step.optString("message", "भाई, यह हिस्सा आप पूरा करके ▶ दबाएँ")
-                                  val whyCant = step.optString("capability_note", "")
-                                  val fullAlert = if (whyCant.isNotEmpty()) "$askMsg ($whyCant)" else askMsg
-                                  speakOut(fullAlert) ; vibrateTick(320) ; pauseForUser("🤝 $fullAlert")
-                                  return@launch
-                              }
-                              val ok = executeLocalStepWithVerification(step)
-                              if (!ok || act == "click" || act == "type" || act == "open_app" || act == "direct_intent") {
-                                  stepQueue.clear()
-                                  break
-                              }
-                          }
-                          if (!isRunning) break
-
-                          aiConsultCount++
-                          if (aiConsultCount > 35) { stopAgent("✅ इस चरण का काम पूरा हो गया!") ; break }
-
-                          statusTv.setTextColor(Color.parseColor("#60A5FA"))
-                          statusTv.text = "🧠 Genius Brain: स्क्रीन और अगला बटन सोच रहा हूँ..."
-                          delay(400)
-
-                          val (screenSnapshot, structSig) = readScreenElementsWithSignature()
-                          if (structSig == lastScreenSig) stuckCount++ else { stuckCount = 0 ; lastScreenSig = structSig }
-
-                          val needVision = stuckCount >= 1 || screenSnapshot.lines().size < 6
-                          val screenshotB64 = if (needVision) captureScreenBase64() else null
-
-                          val nextDecision = thinkLikeGeniusHuman(currentGoal, liveUserCorrection, researchedContext, vaultSummary, installedApps, screenSnapshot, screenshotB64, stuckCount)
-                          if (!isRunning) break
-                          if (liveUserCorrection.isNotEmpty()) liveUserCorrection = ""
-
-                          val chosenBtnInfo = nextDecision.optString("chosen_button_info", "")
-                          val nextStepPlan = nextDecision.optString("next_step_plan", "")
-                          val capabilityNote = nextDecision.optString("capability_note", "")
-                          if (chosenBtnInfo.isNotEmpty() || nextStepPlan.isNotEmpty()) {
-                              planPreviewTv.text = "🎯 बटन: $chosenBtnInfo | आगे: $nextStepPlan"
-                          }
-
-                          val topAct = nextDecision.optString("action", "")
-                          if (topAct == "rate_limit") {
-                              statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                              statusTv.text = "⏳ सभी मॉडल्स व्यस्त हैं, 5 सेकंड इंतज़ार..."
-                              delay(5000) ; continue
-                          } else if (topAct == "done") {
-                              val m = nextDecision.optString("message", "काम पूरा हो गया!")
-                              speakOut(m) ; vibrateTick(280) ; stopAgent("✅ $m") ; break
-                          } else if (topAct == "ask_user") {
-                              val m = nextDecision.optString("message", "यहाँ आपकी मदद चाहिए")
-                              val fullMsg = if (capabilityNote.isNotEmpty()) "$m — $capabilityNote" else m
-                              speakOut(fullMsg) ; vibrateTick(320) ; pauseForUser("🤝 $fullMsg") ; break
-                          }
-
-                          val batchSpeak = nextDecision.optString("speak", "")
-                          if (batchSpeak.isNotEmpty()) speakOut(batchSpeak)
-
-                          val arr = nextDecision.optJSONArray("steps")
-                          if (arr != null && arr.length() > 0) {
-                              for (i in 0 until arr.length()) stepQueue.add(arr.getJSONObject(i))
-                          } else if (topAct.isNotEmpty()) {
-                              stepQueue.add(nextDecision)
-                          } else {
-                              stopAgent("✅ काम पूरा हो गया!") ; break
-                          }
-                      }
+                      stopAgent("✅ काम पूरा हुआ!")
                   }
               }
 
               private suspend fun executeLocalStepWithVerification(step: JSONObject): Boolean {
                   val action = step.optString("action", "")
-                  val reason = step.optString("reason", action)
-                  val nextHint = step.optString("next_step", "")
-                  val target = step.optString("target", "")
                   val text = step.optString("text", "")
-                  val targetId = step.optInt("id", -1)
-                  val x = step.optInt("x", -1)
-                  val y = step.optInt("y", -1)
-
-                  val lowerTarget = "$target $reason".lowercase()
-                  val goalLower = currentGoal.lowercase()
-                  if ((lowerTarget.contains("delete") || lowerTarget.contains("uninstall")) &&
-                      !goalLower.contains("delete") && !goalLower.contains("डिलीट") && !goalLower.contains("हटाओ")) {
-                      pauseForUser("🛡️ Safety Lock: '$reason' खतरनाक बटन है। खुद दबाकर ▶ करें।")
-                      return false
-                  }
-
-                  statusTv.setTextColor(Color.parseColor("#A7F3D0"))
-                  statusTv.text = "⚡ $reason"
-                  if (nextHint.isNotEmpty()) planPreviewTv.text = "🎯 इसके बाद: $nextHint"
-
-                  val pkgNow = rootInActiveWindow?.packageName?.toString()?.substringAfterLast(".") ?: "app"
-                  history.add("[$pkgNow]$action(#$targetId '$target' $reason)")
-                  if (history.size > 16) history.removeAt(0)
-
+                  statusTv.text = "⚡ $text"
                   when (action) {
-                      "open_app" -> { val opened = openAppByName(step.optString("app_name", target)) ; delay(2100) ; return opened }
-                      "direct_intent" -> { val ok = fireDirectIntent(step.optString("intent_type", ""), step.optString("data", text)) ; delay(2200) ; return ok }
-                      "write_content" -> { copyToClipboard(text) ; val ok = performSmartType(targetId, x, y, text, step.optBoolean("press_enter", false)) ; delay(1400) ; return ok }
-                      "scroll_loop" -> {
-                          val dir = step.optString("direction", "up")
-                          val sec = step.optInt("interval_sec", 4).coerceIn(2, 15)
-                          for (i in 1..step.optInt("count", 120)) {
-                              if (!isRunning) break
-                              statusTv.text = "🔄 लगातार स्क्रॉल (#$i) — रोकने के लिए ✋ दबाएँ"
-                              performSwipe(dir) ; delay(sec * 1000L)
-                          }
-                          return true
-                      }
-                      "scroll_down" -> {
-                          for (i in 1..step.optInt("times", 1).coerceIn(1, 5)) { if (!isRunning) break ; performSwipe("up") ; delay(1000) }
-                          return true
-                      }
-                      "scroll_up" -> { performSwipe("down") ; delay(1000) ; return true }
-                      "swipe_left" -> { performSwipe("left") ; delay(900) ; return true }
-                      "swipe_right" -> { performSwipe("right") ; delay(900) ; return true }
-                      "double_tap" -> { val c = getCoordsForTarget(targetId, x, y) ; performDoubleTap(c.first.toFloat(), c.second.toFloat()) ; delay(1100) ; return true }
-                      "long_press" -> { val c = getCoordsForTarget(targetId, x, y) ; performLongPress(c.first.toFloat(), c.second.toFloat()) ; delay(1100) ; return true }
-                      "click" -> {
-                          val beforePkg = rootInActiveWindow?.packageName?.toString() ?: ""
-                          if (targetId > 0 || (x > 0 && y > 0)) {
-                              performSmartClick(targetId, x, y) ; delay(1500)
-                              val afterPkg = rootInActiveWindow?.packageName?.toString() ?: ""
-                              if (beforePkg == "com.google.android.youtube" && afterPkg.contains("chrome")) {
-                                  failedTargets.add("#$targetId($x,$y)")
-                                  performGlobalAction(GLOBAL_ACTION_BACK) ; delay(1000) ; return false
-                              }
-                              return true
-                          }
-                          if (target.isNotEmpty()) {
-                              val coords = waitForKeywordOnScreen(target, 2200L)
-                              if (coords != null) { performTap(coords.first.toFloat(), coords.second.toFloat()) ; delay(1500) ; return true }
-                          }
-                          return false
-                      }
-                      "click_best_video" -> {
-                          delay(1100)
-                          val matchKw = step.optString("match_keywords", target)
-                          val pos = findNonAdVideoResult(matchKw) ?: run { performSwipe("up") ; delay(1100) ; findNonAdVideoResult(matchKw) }
-                          if (pos != null) { performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(1800) ; return true }
-                          return false
-                      }
                       "type" -> {
-                          val pressEnter = step.optBoolean("press_enter", true)
-                          if (target.isNotEmpty() && targetId <= 0 && x <= 0) {
-                              waitForKeywordOnScreen(target, 2000L)?.let { performTap(it.first.toFloat(), it.second.toFloat()) ; delay(600) }
-                          }
-                          val ok = performSmartType(targetId, x, y, text, pressEnter) ; delay(1600) ; return ok
+                          performSmartType(-1, -1, -1, text, true)
+                          delay(1000)
+                          return true
                       }
-                      "system_control" -> { executeSystemControl(step.optString("command", target)) ; delay(900) ; return true }
-                      "back" -> { performGlobalAction(GLOBAL_ACTION_BACK) ; delay(1000) ; return true }
-                      "home" -> { performGlobalAction(GLOBAL_ACTION_HOME) ; delay(1000) ; return true }
-                      "wait" -> { delay(step.optInt("seconds", 2).coerceIn(1, 10) * 1000L) ; return true }
                   }
                   return false
               }
 
-              private suspend fun thinkLikeGeniusHuman(
-                  goal: String, userCorrection: String, researchedInfo: String, vaultSummary: String,
-                  installedApps: String, screen: String, screenshotB64: String?, stuckCount: Int
-              ): JSONObject = withContext(Dispatchers.IO) {
+              private fun pauseForUser(alertText: String) {
+                  isRunning = false ; setWindowGhostMode(false)
+                  statusTv.text = alertText ; autoCollapseBar(false)
+              }
+
+              private fun stopAgent(finalText: String) {
+                  isRunning = false ; agentJob?.cancel() ; nodeMap.clear()
+                  setWindowGhostMode(false) ; statusTv.text = finalText
+                  planPreviewTv.text = "🎯 अगला कदम तैयार..."
+                  history.clear() ; liveUserCorrection = "" ; autoCollapseBar(false)
+              }
+
+              private suspend fun performTap(x: Float, y: Float) {
+                  vibrateTick(15) ; setWindowGhostMode(true) ; delay(55)
+                  val path = Path().apply { moveTo(x, y) }
+                  val stroke = GestureDescription.StrokeDescription(path, 0, 95)
+                  dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
+                  delay(160) ; setWindowGhostMode(false)
+              }
+
+              private suspend fun performSwipe(direction: String) {
+                  setWindowGhostMode(true) ; delay(50)
                   val dm = resources.displayMetrics
-                  val nowTime = SimpleDateFormat("yyyy-MM-dd HH:mm EEEE", Locale.getDefault()).format(Date())
-                  val corr = if (userCorrection.isNotBlank()) "🚨 URGENT USER INTERRUPTION: \"$userCorrection\" -> OBEY IMMEDIATELY!" else "None"
-
-                  val prompt = """
-                      You are a Superhuman Genius Android Mind (Version 12.0) controlling a phone (${dm.widthPixels}x${dm.heightPixels} px).
-                      TIME: $nowTime | MAIN GOAL: "$goal" | LIVE CORRECTION: $corr
-                      RESEARCHED FACTS: "$researchedInfo" | USER VAULT: "$vaultSummary" | NOTIFICATION: "$latestNotificationText"
-                      INSTALLED APPS: $installedApps
-                      HISTORY: ${history.joinToString(" -> ")} | BLACKLISTED: ${failedTargets.joinToString(", ")} | STUCK_COUNT: $stuckCount
-                      SCREEN ELEMENTS:
-                      $screen
-
-                      RULES:
-                      1. If STUCK_COUNT >= 1, last click did NOT change screen! Pick a different button, scroll, or use `direct_intent` / `open_app`.
-                      2. Pick exact `#id` and `(x, y)`. Never click `[AD_SKIP]`.
-                      3. If screen needs UPI PIN, Password, OTP, Captcha, or Fingerprint, return `"action": "ask_user"` with Hindi `"message"` and `"capability_note"`.
-                      4. Output ONLY valid JSON:
-                      {
-                        "chosen_button_info": "बटन #ID और नाम",
-                        "next_step_plan": "इसके बाद अगला कदम",
-                        "capability_note": "यह मैं कर सकता हूँ / या यूज़र क्यों चाहिए",
-                        "speak": "छोटा हिंदी वाक्य",
-                        "steps": [
-                          {"action": "click|type|open_app|direct_intent|scroll_down|scroll_up|swipe_left|swipe_right|double_tap|long_press|click_best_video|scroll_loop|system_control|back|home", "id": 4, "x": 540, "y": 300, "text": "...", "press_enter": true, "reason": "बटन दबा रहा हूँ", "next_step": "अगला काम"}
-                        ]
+                  val path = Path().apply {
+                      when (direction.lowercase()) {
+                          "down" -> { moveTo(dm.widthPixels/2f, dm.heightPixels*0.22f) ; lineTo(dm.widthPixels/2f, dm.heightPixels*0.76f) }
+                          else -> { moveTo(dm.widthPixels/2f, dm.heightPixels*0.76f) ; lineTo(dm.widthPixels/2f, dm.heightPixels*0.22f) }
                       }
-                      (Or if goal is 100% completed on screen, return `{"action": "done", "message": "काम पूरा हो गया!"}`).
-                  """.trimIndent()
-                  return@withContext callGeminiAPI(prompt, false, screenshotB64)
-              }
-
-              private suspend fun researchAndPlanWithAI(rawCommand: String, vaultSummary: String, installedApps: String, currentPkg: String): JSONObject = withContext(Dispatchers.IO) {
-                  val prompt = """
-                      You are Research Brain of Android Agent 12.0 with Google Search.
-                      COMMAND: "$rawCommand" | VAULT: "$vaultSummary" | CURRENT_APP: "$currentPkg"
-                      Find exact episode number/title or best strategy via Google Search, output ONLY valid JSON:
-                      {
-                        "understood_goal": "Clear goal",
-                        "researched_info": "Exact facts found",
-                        "speak": "1 short Hindi sentence",
-                        "steps": [
-                          {"action": "direct_intent", "intent_type": "youtube_search|web_search|open_url|dial|whatsapp_num|play_store", "data": "exact query", "reason": "सीधा सर्च खोल रहा हूँ"}
-                        ]
-                      }
-                  """.trimIndent()
-                  return@withContext callGeminiAPI(prompt, true, null)
-              }
-
-              private suspend fun captureScreenBase64(): String? {
-                  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
-                  val now = System.currentTimeMillis()
-                  if (now - lastScreenshotTime < 1200L) return null
-                  lastScreenshotTime = now
-                  val deferred = CompletableDeferred<String?>()
-                  try {
-                      setWindowGhostMode(true) ; delay(60)
-                      val dm = resources.displayMetrics
-                      takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : AccessibilityService.TakeScreenshotCallback {
-                          override fun onSuccess(screenshot: AccessibilityService.ScreenshotResult) {
-                              try {
-                                  val buffer: HardwareBuffer = screenshot.hardwareBuffer
-                                  val bmp = Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace)
-                                  val soft = bmp?.copy(Bitmap.Config.ARGB_8888, false)
-                                  buffer.close() ; bmp?.recycle()
-                                  if (soft != null) {
-                                      val scaled = Bitmap.createScaledBitmap(soft, dm.widthPixels / 2, dm.heightPixels / 2, true)
-                                      soft.recycle()
-                                      val out = ByteArrayOutputStream()
-                                      scaled.compress(Bitmap.CompressFormat.JPEG, 58, out)
-                                      scaled.recycle()
-                                      deferred.complete(Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP))
-                                  } else deferred.complete(null)
-                              } catch (e: Exception) { deferred.complete(null) }
-                          }
-                          override fun onFailure(errorCode: Int) { deferred.complete(null) }
-                      })
-                  } catch (e: Exception) { setWindowGhostMode(false) ; return null }
-                  val res = withTimeoutOrNull(3000L) { deferred.await() }
-                  setWindowGhostMode(false)
-                  return res
-              }
-
-              private fun isAdElement(node: AccessibilityNodeInfo?): Boolean {
-                  if (node == null) return false
-                  val adWords = listOf("sponsored", "विज्ञापन", "प्रायोजित", "ad ·", "ad •", "visit site", "install now", "shop now")
-                  fun checkSubtree(n: AccessibilityNodeInfo?, depth: Int): Boolean {
-                      if (n == null || depth > 3) return false
-                      val combined = "${n.text ?: ""} ${n.contentDescription ?: ""} ${n.viewIdResourceName ?: ""}".lowercase()
-                      if (adWords.any { combined.contains(it) } || combined.contains("ad_badge")) return true
-                      for (i in 0 until n.childCount) if (checkSubtree(n.getChild(i), depth + 1)) return true
-                      return false
                   }
-                  return checkSubtree(node, 0) || (node.parent != null && checkSubtree(node.parent, 0))
+                  val stroke = GestureDescription.StrokeDescription(path, 0, 320)
+                  dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null)
+                  delay(180) ; setWindowGhostMode(false)
               }
 
-              private fun findNonAdVideoResult(keywordsPipe: String): Pair<Int, Int>? {
-                  val root = rootInActiveWindow ?: return null
-                  val dm = resources.displayMetrics
-                  val keywords = keywordsPipe.split("|", ",", " ").map { it.trim().lowercase() }.filter { it.length > 2 }
-                  data class Candidate(val x: Int, val y: Int, val score: Int)
-                  val candidates = mutableListOf<Candidate>()
-                  fun scan(node: AccessibilityNodeInfo?) {
-                      if (node == null || !node.isVisibleToUser) return
-                      val r = Rect() ; node.getBoundsInScreen(r)
-                      val t = (node.text ?: node.contentDescription ?: "").toString().trim()
-                      if (r.centerY() in 220..(dm.heightPixels - 180) && r.width() > 180 && r.height() > 55 && t.length > 8) {
-                          if ((node.isClickable || node.parent?.isClickable == true) && !isAdElement(node)) {
-                              val lower = t.lowercase()
-                              if (!lower.startsWith("filter") && lower != "shorts") {
-                                  var s = 1
-                                  for (kw in keywords) if (lower.contains(kw)) s += 5
-                                  if (lower.contains("views") || lower.contains("ago") || lower.contains("बार देखा")) s += 8
-                                  candidates.add(Candidate(r.centerX(), r.centerY(), s))
-                              }
-                          }
-                      }
-                      for (i in 0 until node.childCount) scan(node.getChild(i))
-                  }
-                  scan(root)
-                  return candidates.maxWithOrNull(compareBy<Candidate> { it.score }.thenBy { -it.y })?.let { Pair(it.x, it.y) }
-              }
-
-              private suspend fun waitForKeywordOnScreen(keywordsPipe: String, timeoutMs: Long): Pair<Int, Int>? {
-                  val keys = keywordsPipe.split("|", ",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
-                  val start = System.currentTimeMillis()
-                  while (System.currentTimeMillis() - start < timeoutMs && isRunning) {
-                      rootInActiveWindow?.let { searchKeywordInTree(it, keys)?.let { pos -> return pos } }
-                      delay(250)
-                  }
-                  return null
-              }
-
-              private fun searchKeywordInTree(node: AccessibilityNodeInfo?, keys: List<String>): Pair<Int, Int>? {
-                  if (node == null || !node.isVisibleToUser) return null
-                  val r = Rect() ; node.getBoundsInScreen(r)
-                  if (r.width() > 10 && r.height() > 10 && r.centerY() > 80) {
-                      val h = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) (node.hintText ?: "").toString() else ""
-                      val all = "${node.text ?: ""} ${node.contentDescription ?: ""} $h ${node.viewIdResourceName ?: ""}".lowercase()
-                      for (k in keys) if (all.contains(k)) return Pair(r.centerX(), r.centerY())
-                  }
-                  for (i in 0 until node.childCount) searchKeywordInTree(node.getChild(i), keys)?.let { return it }
-                  return null
-              }
-
-              private fun fireDirectIntent(intentType: String, data: String): Boolean {
+              private fun executeSystemControl(cmd: String): Boolean {
                   return try {
-                      val intent = when (intentType.lowercase()) {
-                          "youtube_search" -> Intent(Intent.ACTION_SEARCH).apply { setPackage("com.google.android.youtube") ; putExtra("query", data) }
-                          "web_search" -> Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=${Uri.encode(data)}"))
-                          "open_url" -> Intent(Intent.ACTION_VIEW, Uri.parse(if (data.startsWith("http")) data else "https://$data"))
-                          "dial" -> Intent(Intent.ACTION_DIAL, Uri.parse("tel:${data.filter { it.isDigit() || it == '+' }}"))
-                          "whatsapp_num" -> Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/${data.filter { it.isDigit() }}"))
-                          "play_store" -> Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=${Uri.encode(data)}"))
-                          else -> null
+                      val c = cmd.lowercase()
+                      when {
+                          c.contains("torch_on") -> { val cam = getSystemService(Context.CAMERA_SERVICE) as CameraManager ; cam.cameraIdList.firstOrNull()?.let { cam.setTorchMode(it, true) } ; true }
+                          c.contains("torch_off") -> { val cam = getSystemService(Context.CAMERA_SERVICE) as CameraManager ; cam.cameraIdList.firstOrNull()?.let { cam.setTorchMode(it, false) } ; true }
+                          else -> false
                       }
-                      if (intent != null) { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ; startActivity(intent) ; true } else false
                   } catch (e: Exception) { false }
               }
 
-              private fun isNetworkAvailable(): Boolean {
+              private fun copyToClipboard(text: String) {
+                  val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                  cb.setPrimaryClip(ClipData.newPlainText("AIClip", text))
+              }
+
+              private fun getInstalledAppNames(): String {
                   return try {
-                      val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-                      val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
-                      caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                  } catch (e: Exception) { true }
-              }
-
-              private suspend fun callGeminiAPI(prompt: String, useGoogleSearch: Boolean, base64Image: String?): JSONObject = withContext(Dispatchers.IO) {
-                  if (!isNetworkAvailable()) return@withContext JSONObject().put("action", "ask_user").put("message", "इंटरनेट बंद है! कृपया डेटा या Wi-Fi चालू करें।")
-                  val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
-                  val keyList = (prefs.getString("apiKey", "") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                  if (keyList.isEmpty()) return@withContext JSONObject().put("action", "ask_user").put("message", "पहले ऐप में Gemini API Key सेव करें!")
-
-                  var hitRateLimit = false
-                  var lastError = ""
-
-                  for (keyAttempt in keyList.indices) {
-                      val activeKey = keyList[(currentApiKeyIndex + keyAttempt) % keyList.size]
-                      for (attempt in flashAndLiveModels.indices) {
-                          val idx = (currentModelIndex + attempt) % flashAndLiveModels.size
-                          val modelName = flashAndLiveModels[idx]
-                          if (deadModels.contains(modelName)) continue
-                          val searchModes = if (useGoogleSearch && base64Image == null) listOf(true, false) else listOf(false)
-
-                          for (withSearch in searchModes) {
-                              var conn: HttpURLConnection? = null
-                              try {
-                                  val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$activeKey")
-                                  conn = url.openConnection() as HttpURLConnection
-                                  conn.requestMethod = "POST"
-                                  conn.setRequestProperty("Content-Type", "application/json")
-                                  conn.connectTimeout = 8000 ; conn.readTimeout = 14000 ; conn.doOutput = true
-
-                                  val partsArray = JSONArray().apply {
-                                      put(JSONObject().put("text", prompt))
-                                      if (!base64Image.isNullOrEmpty()) {
-                                          put(JSONObject().put("inline_data", JSONObject().put("mime_type", "image/jpeg").put("data", base64Image)))
-                                      }
-                                  }
-                                  val body = JSONObject().apply {
-                                      put("contents", JSONArray().put(JSONObject().put("parts", partsArray)))
-                                      if (withSearch) put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
-                                      else put("generationConfig", JSONObject().put("responseMimeType", "application/json").put("temperature", 0.1))
-                                  }
-
-                                  conn.outputStream.use { it.write(body.toString().toByteArray()) }
-                                  val code = conn.responseCode
-                                  if (code == 200) {
-                                      currentModelIndex = idx
-                                      currentApiKeyIndex = (currentApiKeyIndex + keyAttempt) % keyList.size
-                                      val resText = conn.inputStream.bufferedReader().readText()
-                                      val parts = JSONObject(resText).getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts")
-                                      var fullReply = ""
-                                      for (p in 0 until parts.length()) fullReply += parts.getJSONObject(p).optString("text", "")
-                                      saveBrainLog("OK [$modelName]")
-                                      return@withContext extractJsonObject(fullReply)
-                                  } else if (code == 400 && withSearch) continue
-                                  else if (code == 429) { hitRateLimit = true ; break }
-                                  else if (code == 404) { deadModels.add(modelName) ; break }
-                                  else {
-                                      val errStr = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
-                                      if (errStr.contains("API_KEY_INVALID", true) || errStr.contains("key not valid", true)) {
-                                          lastError = "API Key Invalid" ; break
-                                      }
-                                      lastError = "$modelName ($code)" ; break
-                                  }
-                              } catch (e: Exception) {
-                                  lastError = e.message ?: "Timeout"
-                                  if (!withSearch) break
-                              } finally {
-                                  try { conn?.disconnect() } catch (e: Exception) {}
-                              }
-                          }
-                      }
-                  }
-                  if (hitRateLimit) return@withContext JSONObject().put("action", "rate_limit")
-                  return@withContext JSONObject().put("action", "ask_user").put("message", "API Error: $lastError")
-              }
-
-              private fun extractJsonObject(raw: String): JSONObject {
-                  val clean = raw.replace("```json", "").replace("```", "").trim()
-                  val objStart = clean.indexOf('{') ; val objEnd = clean.lastIndexOf('}')
-                  if (objStart != -1 && objEnd != -1 && objEnd > objStart) {
-                      try { return JSONObject(clean.substring(objStart, objEnd + 1)) } catch (e: Exception) {}
-                  }
-                  val arrStart = clean.indexOf('[') ; val arrEnd = clean.lastIndexOf(']')
-                  if (arrStart != -1 && arrEnd != -1 && arrEnd > arrStart) {
-                      try { return JSONObject().put("steps", JSONArray(clean.substring(arrStart, arrEnd + 1))) } catch (e: Exception) {}
-                  }
-                  return JSONObject().put("action", "wait")
-              }
-
-              private fun getCoordsForTarget(id: Int, x: Int, y: Int): Pair<Int, Int> {
-                  nodeMap[id]?.let { n ->
-                      val r = Rect() ; n.getBoundsInScreen(r)
-                      if (r.centerX() > 0 && r.centerY() > 0) return Pair(r.centerX(), r.centerY())
-                  }
-                  val dm = resources.displayMetrics
-                  return Pair(if (x > 0) x else dm.widthPixels / 2, if (y > 0) y else dm.heightPixels / 2)
-              }
-
-              private suspend fun performSmartClick(id: Int, x: Int, y: Int) {
-                  nodeMap[id]?.let { n ->
-                      val r = Rect() ; n.getBoundsInScreen(r)
-                      if (r.centerX() > 0 && r.centerY() > 0) { performTap(r.centerX().toFloat(), r.centerY().toFloat()) ; return }
-                      var curr: AccessibilityNodeInfo? = n
-                      while (curr != null) {
-                          if (curr.isClickable) { curr.performAction(AccessibilityNodeInfo.ACTION_CLICK) ; return }
-                          curr = curr.parent
-                      }
-                  }
-                  if (x > 0 && y > 0) performTap(x.toFloat(), y.toFloat())
+                      val pm = packageManager
+                      pm.getInstalledApplications(0).mapNotNull { pm.getLaunchIntentForPackage(it.packageName)?.let { _ -> pm.getApplicationLabel(it).toString() } }.distinct().take(40).joinToString(", ")
+                  } catch (e: Exception) { "YouTube, WhatsApp, Chrome" }
               }
 
               private suspend fun performSmartType(id: Int, x: Int, y: Int, text: String, pressEnter: Boolean): Boolean {
-                  val explicitNode = nodeMap[id]
-                  if (id > 0 || (x > 0 && y > 0)) {
-                      val c = getCoordsForTarget(id, x, y)
-                      performTap(c.first.toFloat(), c.second.toFloat()) ; delay(650)
-                  }
                   val root = rootInActiveWindow ?: return false
-                  val targetNode = if (explicitNode != null && explicitNode.isEditable) explicitNode else findEditableNode(root)
+                  val targetNode = findEditableNode(root)
                   if (targetNode != null) {
                       targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
                       val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
                       var typed = targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
                       if (!typed) { copyToClipboard(text) ; typed = targetNode.performAction(AccessibilityNodeInfo.ACTION_PASTE) }
-                      if (pressEnter) {
-                          delay(380)
-                          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                              targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
-                          }
+                      if (pressEnter && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                          targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
                       }
                       return typed
                   }
@@ -1161,169 +669,13 @@ jobs:
                   fun search(node: AccessibilityNodeInfo?) {
                       if (node == null || !node.isVisibleToUser) return
                       if (node.isEditable) {
-                          if (node.isFocused || node.isAccessibilityFocused) { focused = node ; return }
+                          if (node.isFocused) { focused = node ; return }
                           if (any == null) any = node
                       }
                       for (i in 0 until node.childCount) { search(node.getChild(i)) ; if (focused != null) return }
                   }
                   search(root)
                   return focused ?: any
-              }
-
-              private fun readScreenElementsWithSignature(): Pair<String, String> {
-                  nodeMap.clear()
-                  val root = rootInActiveWindow ?: return Pair("Screen khali hai", "empty")
-                  val dm = resources.displayMetrics
-                  val list = mutableListOf<String>()
-                  val sig = StringBuilder()
-                  val pkg = root.packageName?.toString() ?: "unknown"
-                  list.add("Current App Package: $pkg") ; sig.append(pkg)
-                  var nextId = 1
-
-                  fun traverse(node: AccessibilityNodeInfo?) {
-                      if (node == null || !node.isVisibleToUser || nextId > 135) return
-                      val rect = Rect() ; node.getBoundsInScreen(rect)
-                      val text = (node.text ?: node.contentDescription ?: "").toString().trim()
-                      val hint = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) (node.hintText ?: "").toString().trim() else ""
-                      val idName = (node.viewIdResourceName ?: "").substringAfterLast("/")
-                      val isClick = node.isClickable || (node.parent?.isClickable == true)
-                      val isEdit = node.isEditable ; val isPass = node.isPassword ; val isCheck = node.isCheckable
-
-                      if (text.isNotEmpty() || hint.isNotEmpty() || isEdit || isPass || isCheck || (isClick && idName.isNotEmpty())) {
-                          val cx = rect.centerX() ; val cy = rect.centerY()
-                          if (cx in 5..(dm.widthPixels - 5) && cy in 75..(dm.heightPixels - 15) && rect.width() > 10 && rect.height() > 10) {
-                              val tag = when {
-                                  isAdElement(node) -> "[AD_SKIP]"
-                                  isPass -> "[PASSWORD_BOX]"
-                                  isEdit -> "[INPUT_BOX]"
-                                  isCheck -> if (node.isChecked) "[SWITCH_ON]" else "[SWITCH_OFF]"
-                                  isClick -> "[BUTTON]"
-                                  else -> "[TEXT]"
-                              }
-                              val rawLabel = if (text.isNotEmpty()) text else hint
-                              val cleanText = rawLabel.replace("\n", " ").replace("\"", "'").take(90)
-                              val idHint = if (idName.isNotEmpty()) " ($idName)" else ""
-                              val id = nextId++
-                              nodeMap[id] = node
-                              list.add("#$id$tag '$cleanText'$idHint at (x=$cx, y=$cy)")
-                              sig.append("|").append(tag).append(idName).append(cx / 40).append(cy / 40)
-                          }
-                      }
-                      for (i in 0 until node.childCount) traverse(node.getChild(i))
-                  }
-                  traverse(root)
-                  return Pair(list.joinToString("\n"), sig.toString())
-              }
-
-              private fun pauseForUser(alertText: String) {
-                  isRunning = false ; setWindowGhostMode(false)
-                  statusTv.setTextColor(Color.parseColor("#FBBF24")) ; statusTv.text = alertText
-                  autoCollapseBar(false)
-              }
-
-              private fun stopAgent(finalText: String) {
-                  isRunning = false ; agentJob?.cancel() ; nodeMap.clear()
-                  setWindowGhostMode(false)
-                  statusTv.setTextColor(Color.parseColor("#4ADE80")) ; statusTv.text = finalText
-                  planPreviewTv.text = "🎯 अगला कदम: आपके नए आदेश का इंतज़ार है..."
-                  history.clear() ; liveUserCorrection = "" ; autoCollapseBar(false)
-              }
-
-              private suspend fun performTap(x: Float, y: Float) {
-                  vibrateTick(15) ; setWindowGhostMode(true) ; delay(55)
-                  val path = Path().apply { moveTo(x, y) }
-                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 95)).build(), null, null)
-                  delay(160) ; setWindowGhostMode(false)
-              }
-
-              private suspend fun performDoubleTap(x: Float, y: Float) {
-                  vibrateTick(20) ; setWindowGhostMode(true) ; delay(55)
-                  val p1 = Path().apply { moveTo(x, y) } ; val p2 = Path().apply { moveTo(x, y) }
-                  val s1 = GestureDescription.StrokeDescription(p1, 0, 55)
-                  val s2 = GestureDescription.StrokeDescription(p2, 130, 55)
-                  dispatchGesture(GestureDescription.Builder().addStroke(s1).addStroke(s2).build(), null, null)
-                  delay(170) ; setWindowGhostMode(false)
-              }
-
-              private suspend fun performLongPress(x: Float, y: Float) {
-                  vibrateTick(35) ; setWindowGhostMode(true) ; delay(55)
-                  val path = Path().apply { moveTo(x, y) }
-                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 820)).build(), null, null)
-                  delay(170) ; setWindowGhostMode(false)
-              }
-
-              private suspend fun performSwipe(direction: String) {
-                  setWindowGhostMode(true) ; delay(50)
-                  val dm = resources.displayMetrics
-                  val cx = dm.widthPixels / 2f ; val topY = dm.heightPixels * 0.22f ; val botY = dm.heightPixels * 0.76f
-                  val path = Path().apply {
-                      when (direction.lowercase()) {
-                          "down" -> { moveTo(cx, topY) ; lineTo(cx, botY) }
-                          "left" -> { moveTo(dm.widthPixels * 0.86f, dm.heightPixels / 2f) ; lineTo(dm.widthPixels * 0.14f, dm.heightPixels / 2f) }
-                          "right" -> { moveTo(dm.widthPixels * 0.14f, dm.heightPixels / 2f) ; lineTo(dm.widthPixels * 0.86f, dm.heightPixels / 2f) }
-                          else -> { moveTo(cx, botY) ; lineTo(cx, topY) }
-                      }
-                  }
-                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 320)).build(), null, null)
-                  delay(180) ; setWindowGhostMode(false)
-              }
-
-              private fun executeSystemControl(cmd: String): Boolean {
-                  return try {
-                      val c = cmd.lowercase()
-                      when {
-                          c.contains("torch_on") || c.contains("flash_on") -> {
-                              val cam = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-                              cam.cameraIdList.firstOrNull()?.let { cam.setTorchMode(it, true) } ; true
-                          }
-                          c.contains("torch_off") || c.contains("flash_off") -> {
-                              val cam = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-                              cam.cameraIdList.firstOrNull()?.let { cam.setTorchMode(it, false) } ; true
-                          }
-                          c.contains("volume_up") -> { (getSystemService(Context.AUDIO_SERVICE) as AudioManager).adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI) ; true }
-                          c.contains("volume_down") -> { (getSystemService(Context.AUDIO_SERVICE) as AudioManager).adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI) ; true }
-                          c.contains("mute") -> { (getSystemService(Context.AUDIO_SERVICE) as AudioManager).adjustVolume(AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI) ; true }
-                          c.contains("notification") -> performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
-                          c.contains("quick_settings") -> performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
-                          else -> false
-                      }
-                  } catch (e: Exception) { false }
-              }
-
-              private fun copyToClipboard(text: String) {
-                  (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("AIClip", text))
-              }
-
-              private fun getInstalledAppNames(): String {
-                  return try {
-                      val pm = packageManager
-                      pm.getInstalledApplications(0).mapNotNull { info ->
-                          if (pm.getLaunchIntentForPackage(info.packageName) != null) pm.getApplicationLabel(info).toString() else null
-                      }.distinct().take(45).joinToString(", ")
-                  } catch (e: Exception) { "YouTube, WhatsApp, Chrome, Settings, Instagram, Phone" }
-              }
-
-              private fun openAppByName(appName: String): Boolean {
-                  val pm = packageManager
-                  val clean = appName.trim().lowercase()
-                  val knownPkgs = mapOf(
-                      "youtube" to "com.google.android.youtube", "whatsapp" to "com.whatsapp",
-                      "chrome" to "com.android.chrome", "settings" to "com.android.settings",
-                      "play store" to "com.android.vending", "instagram" to "com.instagram.android",
-                      "flipkart" to "com.flipkart.android", "amazon" to "in.amazon.mshop.android.shopping"
-                  )
-                  for ((k, pkg) in knownPkgs) {
-                      if (clean.contains(k)) {
-                          pm.getLaunchIntentForPackage(pkg)?.let { it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ; startActivity(it) ; return true }
-                      }
-                  }
-                  val apps = pm.getInstalledApplications(0)
-                  val exact = apps.firstOrNull { pm.getApplicationLabel(it).toString().lowercase() == clean }
-                      ?: apps.firstOrNull { val l = pm.getApplicationLabel(it).toString().lowercase() ; l.contains(clean) || clean.contains(l) }
-                  if (exact != null) {
-                      pm.getLaunchIntentForPackage(exact.packageName)?.let { it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ; startActivity(it) ; return true }
-                  }
-                  return false
               }
 
               private fun vibrateTick(ms: Long) {
@@ -1334,7 +686,7 @@ jobs:
               override fun onDestroy() {
                   if (instance == this) instance = null
                   agentJob?.cancel()
-                  floatingLayout?.let { try { windowManager.removeView(it) } catch (e: Exception) {} }
+                  floatingLayout?.let { try { windowManager.removeView(it) } catch (ex: Exception) {} }
                   tts?.shutdown()
                   super.onDestroy()
               }
