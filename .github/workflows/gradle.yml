@@ -58,8 +58,8 @@ jobs:
                   applicationId "com.ai.phoneagent"
                   minSdk 26
                   targetSdk 34
-                  versionCode 20
-                  versionName "13.2-ALL-FLASH-LIVE"
+                  versionCode 21
+                  versionName "14.0-SMART-ROUTER"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -90,7 +90,7 @@ jobs:
               </queries>
               <application
                   android:allowBackup="true"
-                  android:label="AI Commander 13.2 (Redmi 10S)"
+                  android:label="AI Commander 14.0 (Smart Router)"
                   android:supportsRtl="true"
                   android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true">
@@ -164,7 +164,7 @@ jobs:
                       layout.addView(Button(this@MainActivity).apply { text = txt ; setOnClickListener { onClick() } })
                   }
 
-                  addLabel("👑 AI Phone Commander 13.2\n(Redmi Note 10S + All Flash & Live Models)", 19f, "#38BDF8")
+                  addLabel("👑 AI Phone Commander 14.0\n(Smart Task Router + Never-Fail Engine)", 19f, "#38BDF8")
                   val apiInput = makeInput("Yahan Gemini API Key daalein (AIzaSy...)", "apiKey")
                   addBtn("💾 Save & Verify Gemini API Key") {
                       val raw = apiInput.text.toString()
@@ -238,10 +238,10 @@ jobs:
                   })
                   layout.addView(backupRow)
 
-                  addLabel("⚡ Active All 15 Flash & Live Models:", 14f, "#FBBF24")
+                  addLabel("⚡ Smart Task-Routed Models (1.5 & 2.0 Removed):", 14f, "#FBBF24")
                   layout.addView(TextView(this@MainActivity).apply {
                       val logs = prefs.getString("brainLogs", "No logs yet.")
-                      text = "• gemini-2.5-flash\n• gemini-2.5-flash-lite\n• gemini-3-flash-preview\n• gemini-3.1-flash-lite\n• gemini-3.8-live-extension-thinking\n• gemini-3.8-live\n• gemini-3-flash-live\n• gemini-3.8-flash\n• gemini-3.7-flash\n• gemini-3.6-flash\n• gemini-3.5-flash\n• gemini-3.5-flash-lite\n• gemini-2.0-flash\n• gemini-2.0-flash-lite\n• gemini-1.5-flash\n\n📜 Recent Brain Logs:\n$logs"
+                      text = "🟢 Fast UI Router: gemini-2.5-flash-lite, gemini-3.1-flash-lite-preview, gemini-3.5-flash-lite, gemini-2.5-flash\n🟢 Live & Voice Router: gemini-2.5-flash, gemini-3-flash-preview, gemini-3.8-live, gemini-3-flash-live\n🟢 Deep Research & Vision Router: gemini-3-flash-preview, gemini-2.5-flash, gemini-3.8-live-extension-thinking, gemini-3.8-flash, gemini-3.7-flash, gemini-3.6-flash, gemini-3.5-flash\n\n📜 Recent Brain Logs:\n$logs"
                       setTextColor(Color.LTGRAY) ; textSize = 11.5f
                   })
 
@@ -394,27 +394,45 @@ jobs:
               private val nodeMap = mutableMapOf<Int, AccessibilityNodeInfo>()
               private var tts: TextToSpeech? = null
 
-              // RESTORED ALL 15 FLASH & LIVE MODELS FROM YOUR PREVIOUS CODE
-              private val flashAndLiveModels = listOf(
+              // SMART TASK-BASED MODEL POOLS (gemini-2.0-flash, gemini-2.0-flash-lite, gemini-1.5-flash 100% REMOVED)
+              private val fastActionModels = listOf(
                   "gemini-2.5-flash",
                   "gemini-2.5-flash-lite",
                   "gemini-3-flash-preview",
+                  "gemini-3.1-flash-lite-preview",
                   "gemini-3.1-flash-lite",
-                  "gemini-3.8-live-extension-thinking",
+                  "gemini-3.5-flash-lite",
+                  "gemini-3.5-flash",
+                  "gemini-3.8-flash"
+              )
+
+              private val liveInteractiveModels = listOf(
+                  "gemini-2.5-flash",
+                  "gemini-3-flash-preview",
                   "gemini-3.8-live",
                   "gemini-3-flash-live",
+                  "gemini-3.8-live-extension-thinking",
+                  "gemini-2.5-flash-lite",
+                  "gemini-3.8-flash",
+                  "gemini-3.5-flash"
+              )
+
+              private val deepResearchVisionModels = listOf(
+                  "gemini-2.5-flash",
+                  "gemini-3-flash-preview",
+                  "gemini-3.8-live-extension-thinking",
                   "gemini-3.8-flash",
                   "gemini-3.7-flash",
                   "gemini-3.6-flash",
                   "gemini-3.5-flash",
-                  "gemini-3.5-flash-lite",
-                  "gemini-2.0-flash",
-                  "gemini-2.0-flash-lite",
-                  "gemini-1.5-flash"
+                  "gemini-2.5-flash-lite"
               )
+
+              private val discoveredWorkingModels = mutableListOf<String>()
               private val deadModels = mutableSetOf<String>()
-              private var currentModelIndex = 0
+              private var lastWorkingModel = "gemini-2.5-flash"
               private var currentApiKeyIndex = 0
+              private var hasSyncedServerModels = false
 
               override fun onServiceConnected() {
                   super.onServiceConnected()
@@ -482,7 +500,7 @@ jobs:
                           liveUserCorrection = spoken
                           history.add("USER_INTERRUPTED: \"$spoken\"")
                           statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                          statusTv.text = "✋ सुधार: '$spoken'"
+                          statusTv.text = "✋ Sudhaar: '$spoken'"
                           startGeniusAgent(true)
                       } else {
                           currentGoal = spoken ; liveUserCorrection = ""
@@ -495,8 +513,8 @@ jobs:
                   tts?.stop() ; agentJob?.cancel() ; isRunning = false
                   setWindowGhostMode(false) ; autoCollapseBar(false)
                   statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                  statusTv.text = "✋ AI रुक गया! बोलें या लिखें क्या सुधार करना है..."
-                  planPreviewTv.text = "💡 आपने काम के बीच में टोका है (पुराना काम याद है)"
+                  statusTv.text = "✋ AI ruk gaya! Bolein ya likhein kya sudhaar karna hai..."
+                  planPreviewTv.text = "💡 Aapne kaam ke beech mein toka hai (purana kaam yaad hai)"
                   setTouchPassThrough(false)
                   if (openVoice) {
                       startActivity(Intent(this, VoiceActivity::class.java).apply {
@@ -551,7 +569,7 @@ jobs:
                   dragBtn.setOnTouchListener(dragListener)
 
                   statusTv = TextView(this).apply {
-                      text = "👑 Redmi 10S AI 13.2 Ready: बोलें या लिखें!"
+                      text = "👑 Redmi 10S AI 14.0 Ready: Bolein ya likhein!"
                       setTextColor(Color.parseColor("#4ADE80")) ; textSize = 11.5f ; maxLines = 2
                       ellipsize = TextUtils.TruncateAt.END ; setPadding(8, 0, 4, 0)
                       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -562,20 +580,20 @@ jobs:
                   vaultOpenBtn = makePillButton("⚙️", "#334155").apply {
                       setOnClickListener { startActivity(Intent(this@AgentService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                   }
-                  stopBtn = makePillButton("⏹", "#DC2626").apply { setOnClickListener { stopAgent("⏹ आपने AI को रोक दिया।") } }
+                  stopBtn = makePillButton("⏹", "#DC2626").apply { setOnClickListener { stopAgent("⏹ Aapne AI ko rok diya.") } }
                   minBtn = makePillButton("➖", "#475569").apply { setOnClickListener { autoCollapseBar(!isMinimized) } }
 
                   topRow.addView(dragBtn) ; topRow.addView(statusTv) ; topRow.addView(interruptBtn) ; topRow.addView(vaultOpenBtn) ; topRow.addView(stopBtn) ; topRow.addView(minBtn)
 
                   planPreviewTv = TextView(this).apply {
-                      text = "🎯 Redmi Note 10S का पूरा कंट्रोल तैयार है..."
+                      text = "🎯 Smart Model Router + Redmi 10S Control taiyar hai..."
                       setTextColor(Color.parseColor("#93C5FD")) ; textSize = 10.5f ; maxLines = 2
                       ellipsize = TextUtils.TruncateAt.END ; setPadding(6, 4, 6, 2)
                   }
 
                   inputRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL ; gravity = Gravity.CENTER_VERTICAL ; setPadding(0, 6, 0, 0) }
                   cmdInput = EditText(this).apply {
-                      hint = "यहाँ लिखें या 🎤 दबाएँ..."
+                      hint = "Yahan likhein ya 🎤 dabayein..."
                       setHintTextColor(Color.LTGRAY) ; setTextColor(Color.WHITE) ; textSize = 12.5f
                       setSingleLine(true) ; maxLines = 1 ; ellipsize = TextUtils.TruncateAt.END
                       setPadding(18, 9, 18, 9)
@@ -586,7 +604,7 @@ jobs:
                               if (isRunning) {
                                   tts?.stop() ; agentJob?.cancel() ; isRunning = false
                                   statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                                  statusTv.text = "✋ AI रुका है: सुधार लिखकर ▶ दबाएँ"
+                                  statusTv.text = "✋ AI ruka hai: sudhaar likhkar ▶ dabayein"
                               }
                               val curDm = resources.displayMetrics
                               if (params.y > curDm.heightPixels * 0.42) params.y = (curDm.heightPixels * 0.25).toInt()
@@ -681,43 +699,52 @@ jobs:
                       val curVol = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
                       val maxVol = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
                       if (speakHindi) {
-                          "आपके Redmi Note 10S में $bat प्रतिशत बैटरी है, $totalGb जीबी में से $freeGb जीबी स्टोरेज खाली है, और $totalRam जीबी में से $freeRam जीबी रैम फ्री है।"
+                          "Aapke Redmi Note 10S mein $bat percent battery hai, $totalGb GB mein se $freeGb GB storage khali hai, aur $totalRam GB mein se $freeRam GB RAM free hai."
                       } else {
                           "Device: Xiaomi Redmi Note 10S (MIUI, 1080x2400) | Battery: $bat% | Storage: $freeGb/$totalGb GB free | RAM: $freeRam/$totalRam GB free | MediaVol: $curVol/$maxVol"
                       }
                   } catch (e: Exception) { "Xiaomi Redmi Note 10S" }
               }
 
+              // TYPO-TOLERANT 0.01s OFFLINE REFLEX (Catches 'stronge kitena h', 'storge', 'betery', 'seting', 'toch', etc.)
               private fun tryOfflineInstantReflex(goal: String): Boolean {
                   val g = goal.trim().lowercase()
                   val hasAnd = g.contains(" और ") || g.contains(" and ") || g.contains(" फिर ") || g.contains(" ke baad ")
 
-                  if (g.contains("torch") || g.contains("टॉर्च") || g.contains("flash") || g.contains("फ्लैश") || g.contains("light")) {
-                      if (g.contains("off") || g.contains("band") || g.contains("बंद") || g.contains("buja")) {
-                          executeSystemControl("torch_off") ; speakOut("टॉर्च बंद कर दी है") ; stopAgent("🔦 टॉर्च बंद कर दी गई है!") ; return true
+                  // 1. Torch ON/OFF (handles typos like 'toch', 'torc', 'flsh')
+                  if (g.contains("torch") || g.contains("toch") || g.contains("torc") || g.contains("टॉर्च") || g.contains("flash") || g.contains("फ्लैश") || g.contains("light")) {
+                      if (g.contains("off") || g.contains("of") || g.contains("band") || g.contains("बंद") || g.contains("buja")) {
+                          executeSystemControl("torch_off") ; speakOut("Torch band kar di hai") ; stopAgent("🔦 Torch OFF!") ; return true
                       } else if (g.contains("on") || g.contains("jala") || g.contains("जला") || g.contains("chalu") || g.contains("चालू") || g.contains("khol")) {
-                          executeSystemControl("torch_on") ; speakOut("टॉर्च चालू कर दी है") ; stopAgent("🔦 टॉर्च चालू कर दी गई है!") ; return true
+                          executeSystemControl("torch_on") ; speakOut("Torch chalu kar di hai") ; stopAgent("🔦 Torch ON!") ; return true
                       }
                   }
 
-                  if (g.contains("kitni storage") || g.contains("कितनी स्टोरेज") || g.contains("kitni ram") || g.contains("कितनी रैम") || g.contains("battery kitni") || g.contains("बैटरी कितनी")) {
+                  // 2. Storage / RAM / Battery Check (handles typos like 'stronge', 'storge', 'storeg', 'betery', 'batry')
+                  val isStorageOrRamQuery = listOf(
+                      "storage", "stronge", "storge", "storeg", "स्टोरेज",
+                      "kitni ram", "ram kitn", "कितनी रैम", "रैम कित",
+                      "battery", "betery", "batry", "बैटरी", "phone status", "kundali"
+                  ).any { g.contains(it) }
+                  if (isStorageOrRamQuery && !g.contains("setting")) {
                       val report = getRedmiPhoneStatus(true)
                       speakOut(report) ; stopAgent("📲 $report") ; return true
                   }
 
+                  // 3. Direct Settings & Navigation
                   if (!hasAnd) {
                       when {
-                          g == "back" || g == "go back" || g.contains("पीछे जाओ") || g.contains("बैक करो") -> { performGlobalAction(GLOBAL_ACTION_BACK) ; stopAgent("🔙 पीछे आ गए!") ; return true }
-                          g == "home" || g == "go home" || g.contains("होम स्क्रीन") -> { performGlobalAction(GLOBAL_ACTION_HOME) ; stopAgent("🏠 होम स्क्रीन!") ; return true }
-                          g.contains("control center") || g.contains("कंट्रोल सेंटर") -> { executeSystemControl("miui_control_center") ; stopAgent("🎛️ Control Center!") ; return true }
+                          g == "back" || g == "go back" || g.contains("पीछे") || g.contains("बैक") -> { performGlobalAction(GLOBAL_ACTION_BACK) ; stopAgent("🔙 Back!") ; return true }
+                          g == "home" || g == "go home" || g.contains("होम") -> { performGlobalAction(GLOBAL_ACTION_HOME) ; stopAgent("🏠 Home!") ; return true }
+                          g.contains("control center") || g.contains("कंट्रोल सेंटर") -> { executeSystemControl("miui_control_center") ; stopAgent("🎛️ MIUI Control Center!") ; return true }
                           g.contains("notification") || g.contains("नोटिफिकेशन") -> { executeSystemControl("notification") ; stopAgent("🔔 Notifications!") ; return true }
-                          g.contains("आवाज़ बढ़ा") || g.contains("volume up") || g.contains("aawaz badha") -> { executeSystemControl("volume_up") ; executeSystemControl("volume_up") ; stopAgent("🔊 आवाज़ बढ़ा दी गई!") ; return true }
-                          g.contains("आवाज़ कम") || g.contains("volume down") || g.contains("aawaz kam") -> { executeSystemControl("volume_down") ; executeSystemControl("volume_down") ; stopAgent("🔉 आवाज़ कम कर दी गई!") ; return true }
-                          g.contains("setting") || g.contains("सेटिंग") -> { openRedmiSetting("settings") ; speakOut("सेटिंग्स खोल दी है") ; stopAgent("⚙️ Settings खुल गई!") ; return true }
-                          g.contains("hotspot") || g.contains("हॉटस्पॉट") -> { openRedmiSetting("hotspot") ; speakOut("हॉटस्पॉट खोल दिया है") ; stopAgent("📡 Hotspot Settings!") ; return true }
-                          g.contains("wifi") || g.contains("वाईफाई") || g.contains("wi-fi") -> { openRedmiSetting("wifi") ; speakOut("वाई-फाई खोल दिया है") ; stopAgent("📶 Wi-Fi Settings!") ; return true }
-                          g.contains("bluetooth") || g.contains("ब्लूटूथ") -> { openRedmiSetting("bluetooth") ; speakOut("ब्लूटूथ खोल दिया है") ; stopAgent("🔵 Bluetooth Settings!") ; return true }
-                          g == "youtube kholo" || g == "open youtube" || g.contains("यूट्यूब खोलो") -> { openAppByName("youtube") ; speakOut("यूट्यूब खोल रहा हूँ") ; stopAgent("▶️ YouTube खुल गया!") ; return true }
+                          g.contains("आवाज़ बढ़ा") || g.contains("volume up") || g.contains("aawaz badha") -> { executeSystemControl("volume_up") ; executeSystemControl("volume_up") ; stopAgent("🔊 Volume Up!") ; return true }
+                          g.contains("आवाज़ कम") || g.contains("volume down") || g.contains("aawaz kam") -> { executeSystemControl("volume_down") ; executeSystemControl("volume_down") ; stopAgent("🔉 Volume Down!") ; return true }
+                          g.contains("hotspot") || g.contains("hotpot") || g.contains("हॉटस्पॉट") -> { openRedmiSetting("hotspot") ; speakOut("Hotspot setting khol di hai") ; stopAgent("📡 Hotspot Settings!") ; return true }
+                          g.contains("wifi") || g.contains("wi-fi") || g.contains("वाईफाई") -> { openRedmiSetting("wifi") ; speakOut("Wi-Fi setting khol di hai") ; stopAgent("📶 Wi-Fi Settings!") ; return true }
+                          g.contains("bluetooth") || g.contains("blutooth") || g.contains("ब्लूटूथ") -> { openRedmiSetting("bluetooth") ; speakOut("Bluetooth setting khol di hai") ; stopAgent("🔵 Bluetooth Settings!") ; return true }
+                          g.contains("setting") || g.contains("seting") || g.contains("सेटिंग") -> { openRedmiSetting("settings") ; speakOut("Settings khol di hai") ; stopAgent("⚙️ Settings Opened!") ; return true }
+                          g == "youtube kholo" || g == "open youtube" || g.contains("यूट्यूब खोलो") -> { openAppByName("youtube") ; speakOut("YouTube khol raha hoon") ; stopAgent("▶️ YouTube Opened!") ; return true }
                       }
                   }
                   return false
@@ -742,7 +769,7 @@ jobs:
 
                       if (!isResumeWithCorrection && needsDeepWebResearch(currentGoal)) {
                           statusTv.setTextColor(Color.parseColor("#38BDF8"))
-                          statusTv.text = "🔍 Live Google Search से सटीक जानकारी निकाल रहा हूँ..."
+                          statusTv.text = "🔍 Deep Research Model se jankari nikaal raha hoon..."
                           val currentPkg = rootInActiveWindow?.packageName?.toString() ?: "home"
                           val masterPlan = researchAndPlanWithAI(currentGoal, vaultSummary, installedApps, currentPkg)
                           if (!isRunning) return@launch
@@ -754,10 +781,10 @@ jobs:
                               for (i in 0 until initialSteps.length()) stepQueue.add(initialSteps.getJSONObject(i))
                           }
                       } else if (isResumeWithCorrection) {
-                          speakOut("ठीक है, आपकी बात मानकर रास्ता बदल रहा हूँ")
+                          speakOut("Theek hai, aapki baat maankar rasta badal raha hoon")
                       } else {
                           statusTv.setTextColor(Color.parseColor("#38BDF8"))
-                          statusTv.text = "⚡ Flash-Live Brain शुरू..."
+                          statusTv.text = "⚡ Smart Router Active..."
                       }
 
                       var aiConsultCount = 0
@@ -769,12 +796,12 @@ jobs:
                               val step = stepQueue.removeAt(0)
                               val act = step.optString("action", "")
                               if (act == "done") {
-                                  val doneMsg = step.optString("message", "काम पूरा हो गया!")
+                                  val doneMsg = step.optString("message", "Kaam poora ho gaya!")
                                   speakOut(doneMsg) ; vibrateTick(280) ; stopAgent("✅ $doneMsg")
                                   return@launch
                               }
                               if (act == "ask_user") {
-                                  val askMsg = step.optString("message", "भाई, यह हिस्सा आप पूरा करके ▶ दबाएँ")
+                                  val askMsg = step.optString("message", "Bhai, yeh hissa aap poora karke ▶ dabayein")
                                   val whyCant = step.optString("capability_note", "")
                                   val fullAlert = if (whyCant.isNotEmpty()) "$askMsg ($whyCant)" else askMsg
                                   speakOut(fullAlert) ; vibrateTick(320) ; pauseForUser("🤝 $fullAlert")
@@ -789,11 +816,11 @@ jobs:
                           if (!isRunning) break
 
                           aiConsultCount++
-                          if (aiConsultCount > 35) { stopAgent("✅ इस चरण का काम पूरा हो गया!") ; break }
+                          if (aiConsultCount > 35) { stopAgent("✅ Is charan ka kaam poora ho gaya!") ; break }
 
                           statusTv.setTextColor(Color.parseColor("#60A5FA"))
-                          statusTv.text = "🧠 Flash-Live Brain: स्क्रीन सोच रहा हूँ..."
-                          delay(400)
+                          statusTv.text = "🧠 Smart Router ($lastWorkingModel): Screen soch raha hoon..."
+                          delay(350)
 
                           val (screenSnapshot, structSig) = readScreenElementsWithSignature()
                           if (structSig == lastScreenSig) stuckCount++ else { stuckCount = 0 ; lastScreenSig = structSig }
@@ -809,19 +836,19 @@ jobs:
                           val nextStepPlan = nextDecision.optString("next_step_plan", "")
                           val capabilityNote = nextDecision.optString("capability_note", "")
                           if (chosenBtnInfo.isNotEmpty() || nextStepPlan.isNotEmpty()) {
-                              planPreviewTv.text = "🎯 बटन: $chosenBtnInfo | आगे: $nextStepPlan"
+                              planPreviewTv.text = "🎯 [$lastWorkingModel] Button: $chosenBtnInfo | Aage: $nextStepPlan"
                           }
 
                           val topAct = nextDecision.optString("action", "")
                           if (topAct == "rate_limit") {
                               statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                              statusTv.text = "⏳ सभी मॉडल्स व्यस्त हैं, 5 सेकंड इंतज़ार..."
-                              delay(5000) ; continue
+                              statusTv.text = "⏳ Flash models busy hain, 3 second intezaar..."
+                              delay(3000) ; continue
                           } else if (topAct == "done") {
-                              val m = nextDecision.optString("message", "काम पूरा हो गया!")
+                              val m = nextDecision.optString("message", "Kaam poora ho gaya!")
                               speakOut(m) ; vibrateTick(280) ; stopAgent("✅ $m") ; break
                           } else if (topAct == "ask_user") {
-                              val m = nextDecision.optString("message", "यहाँ आपकी मदद चाहिए")
+                              val m = nextDecision.optString("message", "Yahan aapki madad chahiye")
                               val fullMsg = if (capabilityNote.isNotEmpty()) "$m — $capabilityNote" else m
                               speakOut(fullMsg) ; vibrateTick(320) ; pauseForUser("🤝 $fullMsg") ; break
                           }
@@ -835,7 +862,7 @@ jobs:
                           } else if (topAct.isNotEmpty()) {
                               stepQueue.add(nextDecision)
                           } else {
-                              stopAgent("✅ काम पूरा हो गया!") ; break
+                              stopAgent("✅ Kaam poora ho gaya!") ; break
                           }
                       }
                   }
@@ -855,13 +882,13 @@ jobs:
                   val goalLower = currentGoal.lowercase()
                   if ((lowerTarget.contains("delete") || lowerTarget.contains("uninstall")) &&
                       !goalLower.contains("delete") && !goalLower.contains("डिलीट") && !goalLower.contains("हटाओ")) {
-                      pauseForUser("🛡️ Safety Lock: '$reason' खतरनाक बटन है। खुद दबाकर ▶ करें।")
+                      pauseForUser("🛡️ Safety Lock: '$reason' khatarnaak button hai. Khud dabakar ▶ karein.")
                       return false
                   }
 
                   statusTv.setTextColor(Color.parseColor("#A7F3D0"))
                   statusTv.text = "⚡ $reason"
-                  if (nextHint.isNotEmpty()) planPreviewTv.text = "🎯 इसके बाद: $nextHint"
+                  if (nextHint.isNotEmpty()) planPreviewTv.text = "🎯 Iske baad: $nextHint"
 
                   val pkgNow = rootInActiveWindow?.packageName?.toString()?.substringAfterLast(".") ?: "app"
                   history.add("[$pkgNow]$action(#$targetId '$target' $reason)")
@@ -879,7 +906,7 @@ jobs:
                               (goalLower.contains("chala") || goalLower.contains("चला") || goalLower.contains("play") || goalLower.contains("गाना") || goalLower.contains("song"))) {
                               delay(1600)
                               val pos = findNonAdVideoResult(data) ?: run { performSwipe("up") ; delay(1200) ; findNonAdVideoResult(data) }
-                              if (pos != null) { performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(1800) ; stopAgent("✅ विज्ञापन छोड़कर असली वीडियो चला दिया!") }
+                              if (pos != null) { performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(1800) ; stopAgent("✅ Ad chhodkar asli video chala diya!") }
                           }
                           return ok
                       }
@@ -889,7 +916,7 @@ jobs:
                           val sec = step.optInt("interval_sec", 4).coerceIn(2, 15)
                           for (i in 1..step.optInt("count", 120)) {
                               if (!isRunning) break
-                              statusTv.text = "🔄 लगातार स्क्रॉल (#$i) — रोकने के लिए ✋ दबाएँ"
+                              statusTv.text = "🔄 Lagataar Scroll (#$i) — rokne ke liye ✋ dabayein"
                               performSwipe(dir) ; delay(sec * 1000L)
                           }
                           return true
@@ -946,8 +973,14 @@ jobs:
                   val nowTime = SimpleDateFormat("yyyy-MM-dd HH:mm EEEE", Locale.getDefault()).format(Date())
                   val corr = if (userCorrection.isNotBlank()) "🚨 URGENT USER INTERRUPTION: \"$userCorrection\" -> OBEY IMMEDIATELY!" else "None"
 
+                  val taskCategory = when {
+                      userCorrection.isNotBlank() -> "LIVE_VOICE"
+                      screenshotB64 != null || stuckCount >= 1 -> "DEEP_RESEARCH"
+                      else -> "FAST_ACTION"
+                  }
+
                   val prompt = """
-                      You are Master Brain of Xiaomi Redmi Note 10S (Version 13.2).
+                      You are Master Brain of Xiaomi Redmi Note 10S (Version 14.0 Smart Router).
                       LIVE REDMI NOTE 10S HARDWARE & STATUS: $redmiStatus
                       TIME: $nowTime | MAIN GOAL: "$goal" | LIVE CORRECTION: $corr
                       RESEARCHED FACTS: "$researchedInfo" | USER VAULT: "$vaultSummary" | NOTIFICATION: "$latestNotificationText"
@@ -957,29 +990,29 @@ jobs:
                       $screen
 
                       RULES:
-                      1. FAST DIRECT INTENTS:
-                         - To search/play on YouTube: use `{"action": "direct_intent", "intent_type": "youtube_search", "data": "song/video name", "reason": "YouTube सर्च कर रहा हूँ"}`
-                         - To open any Redmi Setting directly: use `{"action": "open_setting", "setting_name": "wifi|bluetooth|hotspot|storage|battery|display|sound|apps|location|security|cast", "reason": "सेटिंग खोल रहा हूँ"}`
+                      1. If user asks a question about phone storage, RAM, battery, or anything else, answer directly using `"action": "done", "message": "..."`.
+                      2. FAST DIRECT INTENTS:
+                         - To search/play on YouTube: use `{"action": "direct_intent", "intent_type": "youtube_search", "data": "song/video name", "reason": "YouTube search kar raha hoon"}`
+                         - To open any Redmi Setting directly: use `{"action": "open_setting", "setting_name": "wifi|bluetooth|hotspot|storage|battery|display|sound|apps|location|security|cast", "reason": "Setting khol raha hoon"}`
                          - For Torch/Volume/Control Center: use `{"action": "system_control", "command": "torch_on|torch_off|volume_up|volume_down|mute|miui_control_center|notification", "reason": "..."}`
-                      2. If STUCK_COUNT >= 1, do NOT repeat the same click! Scroll down (`scroll_down`) or use `open_app` / `direct_intent`.
                       3. Output ONLY valid JSON:
                       {
-                        "chosen_button_info": "बटन #ID और नाम",
-                        "next_step_plan": "इसके बाद अगला कदम",
-                        "capability_note": "यह मैं कर सकता हूँ / या यूज़र क्यों चाहिए",
-                        "speak": "छोटा हिंदी वाक्य",
+                        "chosen_button_info": "Button #ID aur naam",
+                        "next_step_plan": "Iske baad agla kadam",
+                        "capability_note": "Yeh main kar sakta hoon",
+                        "speak": "Chhota Hindi/Hinglish vakya",
                         "steps": [
-                          {"action": "click|type|open_app|open_setting|direct_intent|scroll_down|scroll_up|swipe_left|swipe_right|double_tap|long_press|click_best_video|scroll_loop|system_control|back|home", "id": 4, "x": 540, "y": 300, "text": "...", "press_enter": true, "reason": "बटन दबा रहा हूँ", "next_step": "अगला काम"}
+                          {"action": "click|type|open_app|open_setting|direct_intent|scroll_down|scroll_up|swipe_left|swipe_right|double_tap|long_press|click_best_video|scroll_loop|system_control|back|home", "id": 4, "x": 540, "y": 300, "text": "...", "press_enter": true, "reason": "Button daba raha hoon", "next_step": "Agla kaam"}
                         ]
                       }
-                      (Or if goal is 100% completed on screen, return `{"action": "done", "message": "काम पूरा हो गया!"}`).
+                      (Or if goal is 100% completed on screen, return `{"action": "done", "message": "Kaam poora ho gaya!"}`).
                   """.trimIndent()
-                  return@withContext callGeminiAPI(prompt, false, screenshotB64)
+                  return@withContext callGeminiAPI(prompt, false, screenshotB64, taskCategory)
               }
 
               private suspend fun researchAndPlanWithAI(rawCommand: String, vaultSummary: String, installedApps: String, currentPkg: String): JSONObject = withContext(Dispatchers.IO) {
                   val prompt = """
-                      You are Research Brain of Redmi Note 10S Agent 13.2 with Google Search.
+                      You are Research Brain of Redmi Note 10S Agent 14.0 with Google Search.
                       COMMAND: "$rawCommand" | VAULT: "$vaultSummary" | CURRENT_APP: "$currentPkg"
                       Find exact episode number/title or best strategy via Google Search, output ONLY valid JSON:
                       {
@@ -987,11 +1020,11 @@ jobs:
                         "researched_info": "Exact facts found",
                         "speak": "1 short Hindi sentence",
                         "steps": [
-                          {"action": "direct_intent", "intent_type": "youtube_search|web_search|open_url|dial|whatsapp_num|play_store", "data": "exact query", "reason": "सीधा सर्च खोल रहा हूँ"}
+                          {"action": "direct_intent", "intent_type": "youtube_search|web_search|open_url|dial|whatsapp_num|play_store", "data": "exact query", "reason": "Seedha search khol raha hoon"}
                         ]
                       }
                   """.trimIndent()
-                  return@withContext callGeminiAPI(prompt, true, null)
+                  return@withContext callGeminiAPI(prompt, true, null, "DEEP_RESEARCH")
               }
 
               private suspend fun captureScreenBase64(): String? {
@@ -1145,25 +1178,84 @@ jobs:
                   } catch (e: Exception) { true }
               }
 
-              // FIXED 403/404 ROTATION: If any model gives 403 or 404, auto-skip it and immediately run the next Flash/Live model!
-              private suspend fun callGeminiAPI(prompt: String, useGoogleSearch: Boolean, base64Image: String?): JSONObject = withContext(Dispatchers.IO) {
-                  if (!isNetworkAvailable()) return@withContext JSONObject().put("action", "ask_user").put("message", "इंटरनेट बंद है! कृपया डेटा या Wi-Fi चालू करें।")
+              // AUTO-SYNC WORKING FLASH MODELS DIRECTLY FROM GOOGLE SERVER (Excludes 1.5-flash, 2.0-flash, 2.0-flash-lite & paid pro)
+              private fun syncServerFlashModelsOnce(apiKey: String) {
+                  if (hasSyncedServerModels) return
+                  hasSyncedServerModels = true
+                  var conn: HttpURLConnection? = null
+                  try {
+                      val url = URL("https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey")
+                      conn = url.openConnection() as HttpURLConnection
+                      conn.requestMethod = "GET"
+                      conn.connectTimeout = 6000 ; conn.readTimeout = 6000
+                      if (conn.responseCode == 200) {
+                          val text = conn.inputStream.bufferedReader().readText()
+                          val arr = JSONObject(text).optJSONArray("models") ?: return
+                          for (i in 0 until arr.length()) {
+                              val m = arr.getJSONObject(i)
+                              val rawName = m.optString("name", "").removePrefix("models/")
+                              val methods = m.optJSONArray("supportedGenerationMethods")?.toString() ?: ""
+                              val isBannedOld = rawName.contains("1.5-flash") || rawName.contains("2.0-flash")
+                              val isFlashOrLive = rawName.contains("flash") || rawName.contains("live")
+                              val isNotEmbeddingOrImageOnly = !rawName.contains("tts") && !rawName.contains("image") && !rawName.contains("audio")
+                              if (methods.contains("generateContent") && isFlashOrLive && !isBannedOld && isNotEmbeddingOrImageOnly) {
+                                  if (!discoveredWorkingModels.contains(rawName)) discoveredWorkingModels.add(rawName)
+                              }
+                          }
+                          saveBrainLog("Synced ${discoveredWorkingModels.size} live models")
+                      }
+                  } catch (e: Exception) {
+                  } finally {
+                      try { conn?.disconnect() } catch (e: Exception) {}
+                  }
+              }
+
+              private fun buildTaskRoutedModelList(taskCategory: String): List<String> {
+                  val basePool = when (taskCategory) {
+                      "LIVE_VOICE" -> liveInteractiveModels
+                      "DEEP_RESEARCH" -> deepResearchVisionModels
+                      else -> fastActionModels
+                  }
+                  val combined = mutableListOf<String>()
+                  if (lastWorkingModel.isNotEmpty() && !deadModels.contains(lastWorkingModel)) {
+                      combined.add(lastWorkingModel)
+                  }
+                  for (m in basePool) {
+                      if (!combined.contains(m) && !deadModels.contains(m)) combined.add(m)
+                  }
+                  for (m in discoveredWorkingModels) {
+                      if (!combined.contains(m) && !deadModels.contains(m)) combined.add(m)
+                  }
+                  return combined
+              }
+
+              // NEVER-FAIL MULTI-CONFIG API CALLER
+              private suspend fun callGeminiAPI(
+                  prompt: String,
+                  useGoogleSearch: Boolean,
+                  base64Image: String?,
+                  taskCategory: String = "FAST_ACTION"
+              ): JSONObject = withContext(Dispatchers.IO) {
+                  if (!isNetworkAvailable()) return@withContext JSONObject().put("action", "ask_user").put("message", "Internet band hai! Kripya Data ya Wi-Fi chalu karein.")
                   val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
                   val keyList = (prefs.getString("apiKey", "") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                  if (keyList.isEmpty()) return@withContext JSONObject().put("action", "ask_user").put("message", "पहले ऐप में Gemini API Key सेव करें!")
+                  if (keyList.isEmpty()) return@withContext JSONObject().put("action", "ask_user").put("message", "Pehle app mein Gemini API Key save karein!")
+
+                  syncServerFlashModelsOnce(keyList[0])
+                  val routedModels = buildTaskRoutedModelList(taskCategory)
 
                   var hitRateLimit = false
-                  var lastError = ""
+                  var lastRealError = ""
 
                   for (keyAttempt in keyList.indices) {
                       val activeKey = keyList[(currentApiKeyIndex + keyAttempt) % keyList.size]
-                      for (attempt in flashAndLiveModels.indices) {
-                          val idx = (currentModelIndex + attempt) % flashAndLiveModels.size
-                          val modelName = flashAndLiveModels[idx]
+                      for (modelName in routedModels) {
                           if (deadModels.contains(modelName)) continue
-                          val searchModes = if (useGoogleSearch && base64Image == null) listOf(true, false) else listOf(false)
 
-                          for (withSearch in searchModes) {
+                          // Mode 0: Search (if requested), Mode 1: JSON mimeType, Mode 2: Plain universal request
+                          val modes = if (useGoogleSearch && base64Image == null) listOf("SEARCH", "JSON", "PLAIN") else listOf("JSON", "PLAIN")
+
+                          for (mode in modes) {
                               var conn: HttpURLConnection? = null
                               try {
                                   val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$activeKey")
@@ -1180,37 +1272,45 @@ jobs:
                                   }
                                   val body = JSONObject().apply {
                                       put("contents", JSONArray().put(JSONObject().put("parts", partsArray)))
-                                      if (withSearch) put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
-                                      else put("generationConfig", JSONObject().put("responseMimeType", "application/json").put("temperature", 0.1))
+                                      when (mode) {
+                                          "SEARCH" -> put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
+                                          "JSON" -> put("generationConfig", JSONObject().put("responseMimeType", "application/json").put("temperature", 0.1))
+                                          "PLAIN" -> put("generationConfig", JSONObject().put("temperature", 0.1))
+                                      }
                                   }
 
                                   conn.outputStream.use { it.write(body.toString().toByteArray()) }
                                   val code = conn.responseCode
                                   if (code == 200) {
-                                      currentModelIndex = idx
+                                      lastWorkingModel = modelName
                                       currentApiKeyIndex = (currentApiKeyIndex + keyAttempt) % keyList.size
                                       val resText = conn.inputStream.bufferedReader().readText()
                                       val parts = JSONObject(resText).getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts")
                                       var fullReply = ""
                                       for (p in 0 until parts.length()) fullReply += parts.getJSONObject(p).optString("text", "")
-                                      saveBrainLog("OK [$modelName]")
+                                      saveBrainLog("OK [$modelName | $taskCategory]")
                                       return@withContext extractJsonObject(fullReply)
-                                  } else if (code == 400 && withSearch) continue
-                                  else if (code == 429) { hitRateLimit = true ; break }
-                                  else if (code == 404 || code == 403) {
+                                  } else if (code == 400) {
                                       val errStr = conn.errorStream?.bufferedReader()?.readText() ?: ""
                                       if (errStr.contains("API_KEY_INVALID", true) || errStr.contains("key not valid", true)) {
-                                          lastError = "API Key Invalid" ; break
+                                          return@withContext JSONObject().put("action", "ask_user").put("message", "API Key galat hai! Kripya sahi Gemini Key save karein.")
                                       }
+                                      // Try next mode (e.g., PLAIN mode without responseMimeType/tools)
+                                      continue
+                                  } else if (code == 429) {
+                                      hitRateLimit = true
+                                      lastRealError = "$modelName (Quota/429)"
+                                      break
+                                  } else if (code == 404 || code == 403) {
                                       deadModels.add(modelName)
-                                      lastError = "$modelName ($code)"
                                       break
                                   } else {
-                                      lastError = "$modelName ($code)" ; break
+                                      lastRealError = "$modelName ($code)"
+                                      break
                                   }
                               } catch (e: Exception) {
-                                  lastError = e.message ?: "Timeout"
-                                  if (!withSearch) break
+                                  lastRealError = e.message ?: "Network Timeout"
+                                  break
                               } finally {
                                   try { conn?.disconnect() } catch (e: Exception) {}
                               }
@@ -1218,7 +1318,7 @@ jobs:
                       }
                   }
                   if (hitRateLimit) return@withContext JSONObject().put("action", "rate_limit")
-                  return@withContext JSONObject().put("action", "ask_user").put("message", "API Error: $lastError")
+                  return@withContext JSONObject().put("action", "ask_user").put("message", "Network/API Busy ($lastRealError). 2 second baad ▶ dabayein.")
               }
 
               private fun extractJsonObject(raw: String): JSONObject {
@@ -1352,7 +1452,7 @@ jobs:
                   isRunning = false ; agentJob?.cancel() ; nodeMap.clear()
                   setWindowGhostMode(false)
                   statusTv.setTextColor(Color.parseColor("#4ADE80")) ; statusTv.text = finalText
-                  planPreviewTv.text = "🎯 अगला कदम: आपके नए आदेश का इंतज़ार है..."
+                  planPreviewTv.text = "🎯 Agla kadam: Aapke naye aadesh ka intezaar hai..."
                   history.clear() ; liveUserCorrection = "" ; autoCollapseBar(false)
               }
 
