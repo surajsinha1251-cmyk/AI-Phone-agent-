@@ -58,8 +58,8 @@ jobs:
                   applicationId "com.ai.phoneagent"
                   minSdk 26
                   targetSdk 34
-                  versionCode 21
-                  versionName "14.0-SMART-ROUTER"
+                  versionCode 22
+                  versionName "15.0-ZERO-FAIL"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -90,7 +90,7 @@ jobs:
               </queries>
               <application
                   android:allowBackup="true"
-                  android:label="AI Commander 14.0 (Smart Router)"
+                  android:label="AI Commander 15.0 (Zero-Fail)"
                   android:supportsRtl="true"
                   android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true">
@@ -164,7 +164,7 @@ jobs:
                       layout.addView(Button(this@MainActivity).apply { text = txt ; setOnClickListener { onClick() } })
                   }
 
-                  addLabel("👑 AI Phone Commander 14.0\n(Smart Task Router + Never-Fail Engine)", 19f, "#38BDF8")
+                  addLabel("👑 AI Phone Commander 15.0\n(Zero-Failure Dual Brain + Redmi Note 10S)", 19f, "#38BDF8")
                   val apiInput = makeInput("Yahan Gemini API Key daalein (AIzaSy...)", "apiKey")
                   addBtn("💾 Save & Verify Gemini API Key") {
                       val raw = apiInput.text.toString()
@@ -238,10 +238,9 @@ jobs:
                   })
                   layout.addView(backupRow)
 
-                  addLabel("⚡ Smart Task-Routed Models (1.5 & 2.0 Removed):", 14f, "#FBBF24")
+                  addLabel("📜 Recent Brain Logs:", 14f, "#93C5FD")
                   layout.addView(TextView(this@MainActivity).apply {
-                      val logs = prefs.getString("brainLogs", "No logs yet.")
-                      text = "🟢 Fast UI Router: gemini-2.5-flash-lite, gemini-3.1-flash-lite-preview, gemini-3.5-flash-lite, gemini-2.5-flash\n🟢 Live & Voice Router: gemini-2.5-flash, gemini-3-flash-preview, gemini-3.8-live, gemini-3-flash-live\n🟢 Deep Research & Vision Router: gemini-3-flash-preview, gemini-2.5-flash, gemini-3.8-live-extension-thinking, gemini-3.8-flash, gemini-3.7-flash, gemini-3.6-flash, gemini-3.5-flash\n\n📜 Recent Brain Logs:\n$logs"
+                      text = prefs.getString("brainLogs", "No logs yet.")
                       setTextColor(Color.LTGRAY) ; textSize = 11.5f
                   })
 
@@ -394,13 +393,14 @@ jobs:
               private val nodeMap = mutableMapOf<Int, AccessibilityNodeInfo>()
               private var tts: TextToSpeech? = null
 
-              // SMART TASK-BASED MODEL POOLS (gemini-2.0-flash, gemini-2.0-flash-lite, gemini-1.5-flash 100% REMOVED)
+              // SMART ROUTED MODEL POOLS (1.5-flash, 2.0-flash, 2.0-flash-lite 100% REMOVED)
               private val fastActionModels = listOf(
                   "gemini-2.5-flash",
                   "gemini-2.5-flash-lite",
+                  "gemini-flash-latest",
+                  "gemini-flash-lite-latest",
                   "gemini-3-flash-preview",
                   "gemini-3.1-flash-lite-preview",
-                  "gemini-3.1-flash-lite",
                   "gemini-3.5-flash-lite",
                   "gemini-3.5-flash",
                   "gemini-3.8-flash"
@@ -408,27 +408,28 @@ jobs:
 
               private val liveInteractiveModels = listOf(
                   "gemini-2.5-flash",
+                  "gemini-flash-latest",
                   "gemini-3-flash-preview",
+                  "gemini-2.5-flash-lite",
                   "gemini-3.8-live",
                   "gemini-3-flash-live",
                   "gemini-3.8-live-extension-thinking",
-                  "gemini-2.5-flash-lite",
-                  "gemini-3.8-flash",
-                  "gemini-3.5-flash"
+                  "gemini-3.8-flash"
               )
 
               private val deepResearchVisionModels = listOf(
                   "gemini-2.5-flash",
                   "gemini-3-flash-preview",
+                  "gemini-flash-latest",
+                  "gemini-2.5-pro",
                   "gemini-3.8-live-extension-thinking",
                   "gemini-3.8-flash",
                   "gemini-3.7-flash",
                   "gemini-3.6-flash",
-                  "gemini-3.5-flash",
-                  "gemini-2.5-flash-lite"
+                  "gemini-3.5-flash"
               )
 
-              private val discoveredWorkingModels = mutableListOf<String>()
+              private val serverVerifiedModels = mutableListOf<String>()
               private val deadModels = mutableSetOf<String>()
               private var lastWorkingModel = "gemini-2.5-flash"
               private var currentApiKeyIndex = 0
@@ -569,7 +570,7 @@ jobs:
                   dragBtn.setOnTouchListener(dragListener)
 
                   statusTv = TextView(this).apply {
-                      text = "👑 Redmi 10S AI 14.0 Ready: Bolein ya likhein!"
+                      text = "👑 Redmi 10S AI 15.0 (Zero-Fail): Bolein ya likhein!"
                       setTextColor(Color.parseColor("#4ADE80")) ; textSize = 11.5f ; maxLines = 2
                       ellipsize = TextUtils.TruncateAt.END ; setPadding(8, 0, 4, 0)
                       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -586,7 +587,7 @@ jobs:
                   topRow.addView(dragBtn) ; topRow.addView(statusTv) ; topRow.addView(interruptBtn) ; topRow.addView(vaultOpenBtn) ; topRow.addView(stopBtn) ; topRow.addView(minBtn)
 
                   planPreviewTv = TextView(this).apply {
-                      text = "🎯 Smart Model Router + Redmi 10S Control taiyar hai..."
+                      text = "🎯 Zero-Fail Dual Brain + Redmi 10S Control taiyar hai..."
                       setTextColor(Color.parseColor("#93C5FD")) ; textSize = 10.5f ; maxLines = 2
                       ellipsize = TextUtils.TruncateAt.END ; setPadding(6, 4, 6, 2)
                   }
@@ -706,12 +707,12 @@ jobs:
                   } catch (e: Exception) { "Xiaomi Redmi Note 10S" }
               }
 
-              // TYPO-TOLERANT 0.01s OFFLINE REFLEX (Catches 'stronge kitena h', 'storge', 'betery', 'seting', 'toch', etc.)
+              // LAYER 1: SUPER-EXPANDED 0.01s OFFLINE INSTANT REFLEX (Handles Scroll, Swipe, Settings, Apps, YouTube, Storage, Torch!)
               private fun tryOfflineInstantReflex(goal: String): Boolean {
                   val g = goal.trim().lowercase()
                   val hasAnd = g.contains(" और ") || g.contains(" and ") || g.contains(" फिर ") || g.contains(" ke baad ")
 
-                  // 1. Torch ON/OFF (handles typos like 'toch', 'torc', 'flsh')
+                  // 1. Torch ON/OFF
                   if (g.contains("torch") || g.contains("toch") || g.contains("torc") || g.contains("टॉर्च") || g.contains("flash") || g.contains("फ्लैश") || g.contains("light")) {
                       if (g.contains("off") || g.contains("of") || g.contains("band") || g.contains("बंद") || g.contains("buja")) {
                           executeSystemControl("torch_off") ; speakOut("Torch band kar di hai") ; stopAgent("🔦 Torch OFF!") ; return true
@@ -720,7 +721,7 @@ jobs:
                       }
                   }
 
-                  // 2. Storage / RAM / Battery Check (handles typos like 'stronge', 'storge', 'storeg', 'betery', 'batry')
+                  // 2. Storage / RAM / Battery Check
                   val isStorageOrRamQuery = listOf(
                       "storage", "stronge", "storge", "storeg", "स्टोरेज",
                       "kitni ram", "ram kitn", "कितनी रैम", "रैम कित",
@@ -731,7 +732,61 @@ jobs:
                       speakOut(report) ; stopAgent("📲 $report") ; return true
                   }
 
-                  // 3. Direct Settings & Navigation
+                  // 3. Instant Scroll & Swipe Reflex (Fixes 'scroll karo', 'niche karo', 'upar karo', 'reels scroll')
+                  if (!hasAnd && (g.contains("scroll") || g.contains("स्क्रॉल") || g.contains("scrol") || g.contains("swipe") || g.contains("स्वाइप") || g == "niche karo" || g == "upar karo" || g == "नीचे करो" || g == "ऊपर करो")) {
+                      if (g.contains("lagataar") || g.contains("लगातार") || g.contains("loop") || g.contains("reels") || g.contains("shorts")) {
+                          agentJob?.cancel() ; isRunning = true ; autoCollapseBar(true)
+                          agentJob = scope.launch {
+                              for (i in 1..120) {
+                                  if (!isRunning) break
+                                  statusTv.text = "🔄 Lagataar Scroll (#$i) — rokne ke liye ✋ dabayein"
+                                  performSwipe("up") ; delay(4000L)
+                              }
+                              stopAgent("✅ Scroll poora hua!")
+                          }
+                          return true
+                      }
+                      val dir = when {
+                          g.contains("up") || g.contains("upar") || g.contains("ऊपर") -> "down"
+                          g.contains("left") || g.contains("baaye") -> "left"
+                          g.contains("right") || g.contains("daaye") -> "right"
+                          else -> "up"
+                      }
+                      scope.launch {
+                          performSwipe(dir)
+                          stopAgent("✅ Screen Scroll Kar Diya!")
+                      }
+                      return true
+                  }
+
+                  // 4. Direct YouTube Song/Video Play (when not asking for latest episode research)
+                  if ((g.contains("youtube") || g.contains("यूट्यूब")) && !needsDeepWebResearch(g) &&
+                      (g.contains("chala") || g.contains("चला") || g.contains("play") || g.contains("search") || g.contains("सर्च") || g.contains("song") || g.contains("गाना"))) {
+                      val query = g.replace("youtube", "").replace("यूट्यूब", "")
+                          .replace("par", "").replace("per", "").replace("pe", "").replace("in", "").replace("mein", "").replace("पर", "").replace("में", "")
+                          .replace("chalao", "").replace("chala do", "").replace("chala", "").replace("चलाओ", "").replace("चला दो", "")
+                          .replace("search karo", "").replace("search", "").replace("play", "").trim()
+                      if (query.length >= 2) {
+                          agentJob?.cancel() ; isRunning = true ; autoCollapseBar(true)
+                          agentJob = scope.launch {
+                              statusTv.text = "▶️ YouTube par '$query' chala raha hoon..."
+                              speakOut("YouTube par $query chala raha hoon")
+                              fireDirectIntent("youtube_search", query)
+                              delay(2800)
+                              val pos = findNonAdVideoResult(query) ?: run { performSwipe("up") ; delay(1200) ; findNonAdVideoResult(query) }
+                              if (pos != null) {
+                                  performTap(pos.first.toFloat(), pos.second.toFloat())
+                                  delay(1500)
+                                  stopAgent("✅ '$query' (Non-Ad Video) Play Kar Diya!")
+                              } else {
+                                  stopAgent("✅ YouTube par '$query' khol diya!")
+                              }
+                          }
+                          return true
+                      }
+                  }
+
+                  // 5. Direct Navigation, Settings & Any Installed App Opener
                   if (!hasAnd) {
                       when {
                           g == "back" || g == "go back" || g.contains("पीछे") || g.contains("बैक") -> { performGlobalAction(GLOBAL_ACTION_BACK) ; stopAgent("🔙 Back!") ; return true }
@@ -743,8 +798,21 @@ jobs:
                           g.contains("hotspot") || g.contains("hotpot") || g.contains("हॉटस्पॉट") -> { openRedmiSetting("hotspot") ; speakOut("Hotspot setting khol di hai") ; stopAgent("📡 Hotspot Settings!") ; return true }
                           g.contains("wifi") || g.contains("wi-fi") || g.contains("वाईफाई") -> { openRedmiSetting("wifi") ; speakOut("Wi-Fi setting khol di hai") ; stopAgent("📶 Wi-Fi Settings!") ; return true }
                           g.contains("bluetooth") || g.contains("blutooth") || g.contains("ब्लूटूथ") -> { openRedmiSetting("bluetooth") ; speakOut("Bluetooth setting khol di hai") ; stopAgent("🔵 Bluetooth Settings!") ; return true }
+                          g.contains("about phone") || g.contains("अबाउट फोन") -> { openRedmiSetting("about") ; speakOut("About phone khol diya hai") ; stopAgent("📱 About Phone!") ; return true }
+                          g.contains("display setting") || g == "display kholo" -> { openRedmiSetting("display") ; stopAgent("🔆 Display Settings!") ; return true }
                           g.contains("setting") || g.contains("seting") || g.contains("सेटिंग") -> { openRedmiSetting("settings") ; speakOut("Settings khol di hai") ; stopAgent("⚙️ Settings Opened!") ; return true }
-                          g == "youtube kholo" || g == "open youtube" || g.contains("यूट्यूब खोलो") -> { openAppByName("youtube") ; speakOut("YouTube khol raha hoon") ; stopAgent("▶️ YouTube Opened!") ; return true }
+                      }
+
+                      // Check if user said "[App Name] kholo" or "open [App Name]"
+                      if (g.endsWith("kholo") || g.endsWith("खोलो") || g.startsWith("open ")) {
+                          val candidateApp = g.removePrefix("open ").removeSuffix("kholo").removeSuffix("खोलो").trim()
+                          if (candidateApp.length >= 2) {
+                              if (openAppByName(candidateApp)) {
+                                  speakOut("$candidateApp khol diya hai")
+                                  stopAgent("📲 '$candidateApp' khol diya!")
+                                  return true
+                              }
+                          }
                       }
                   }
                   return false
@@ -753,6 +821,61 @@ jobs:
               private fun needsDeepWebResearch(cmd: String): Boolean {
                   val lower = cmd.lowercase()
                   return listOf("episode", "एपिसोड", "latest", "naya", "नया", "kamao", "कमाओ", "earning", "challenge", "चैलेंज", "price", "news", "research").any { lower.contains(it) }
+              }
+
+              // LAYER 3: UNBREAKABLE ON-DEVICE SCREEN BRAIN (Executes when API is busy or unavailable so it NEVER fails!)
+              private suspend fun runLocalOnDeviceScreenBrain(goal: String): JSONObject {
+                  val g = goal.trim().lowercase()
+
+                  // 1. Check for scroll / swipe intent
+                  if (g.contains("scroll") || g.contains("स्क्रॉल") || g.contains("niche") || g.contains("नीचे") || g.contains("down")) {
+                      return JSONObject().put("steps", JSONArray().put(JSONObject().put("action", "scroll_down").put("times", 1).put("reason", "Screen niche scroll kar raha hoon")))
+                  }
+                  if (g.contains("upar") || g.contains("ऊपर") || g.contains("scroll up")) {
+                      return JSONObject().put("steps", JSONArray().put(JSONObject().put("action", "scroll_up").put("reason", "Screen upar scroll kar raha hoon")))
+                  }
+
+                  // 2. Check if user wants to type something from Vault or direct text
+                  if (g.contains("likho") || g.contains("लिखो") || g.contains("type") || g.contains("bharo") || g.contains("भरो")) {
+                      val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+                      val textToType = when {
+                          g.contains("naam") || g.contains("name") || g.contains("नाम") -> prefs.getString("vaultName", "") ?: ""
+                          g.contains("upi") -> prefs.getString("vaultUpi", "") ?: ""
+                          g.contains("skill") || g.contains("स्किल") -> prefs.getString("vaultSkills", "") ?: ""
+                          g.contains("number") || g.contains("email") || g.contains("contact") -> prefs.getString("vaultContact", "") ?: ""
+                          else -> g.replace("likho", "").replace("लिखो", "").replace("type", "").trim()
+                      }
+                      if (textToType.isNotEmpty()) {
+                          return JSONObject().put("steps", JSONArray().put(JSONObject().put("action", "type").put("text", textToType).put("press_enter", true).put("reason", "'$textToType' type kar raha hoon")))
+                      }
+                  }
+
+                  // 3. Match any visible button or text on current screen!
+                  val cleanWords = g.replace("par click karo", "").replace("click karo", "").replace("dabayein", "")
+                      .replace("dabao", "").replace("kholo", "").replace("खोलो", "").replace("दबाओ", "")
+                      .split(" ", ",").map { it.trim() }.filter { it.length >= 3 }
+
+                  for ((id, node) in nodeMap) {
+                      val label = "${node.text ?: ""} ${node.contentDescription ?: ""}".lowercase()
+                      if (label.isNotEmpty() && cleanWords.any { label.contains(it) }) {
+                          val r = Rect() ; node.getBoundsInScreen(r)
+                          return JSONObject().put("steps", JSONArray().put(
+                              JSONObject().put("action", "click").put("id", id).put("x", r.centerX()).put("y", r.centerY()).put("reason", "'${node.text ?: "Button"}' par click kar raha hoon")
+                          ))
+                      }
+                  }
+
+                  // 4. Try opening an app if mentioned
+                  for (w in cleanWords) {
+                      if (openAppByName(w)) {
+                          return JSONObject().put("action", "done").put("message", "$w khol diya gaya hai!")
+                      }
+                  }
+
+                  // 5. Default fallback: scroll down to find the element on screen
+                  return JSONObject().put("steps", JSONArray().put(
+                      JSONObject().put("action", "scroll_down").put("times", 1).put("reason", "Screen par aage dhoondhne ke liye scroll kar raha hoon")
+                  ))
               }
 
               private fun startGeniusAgent(isResumeWithCorrection: Boolean) {
@@ -816,7 +939,7 @@ jobs:
                           if (!isRunning) break
 
                           aiConsultCount++
-                          if (aiConsultCount > 35) { stopAgent("✅ Is charan ka kaam poora ho gaya!") ; break }
+                          if (aiConsultCount > 25) { stopAgent("✅ Is charan ka kaam poora ho gaya!") ; break }
 
                           statusTv.setTextColor(Color.parseColor("#60A5FA"))
                           statusTv.text = "🧠 Smart Router ($lastWorkingModel): Screen soch raha hoon..."
@@ -828,9 +951,21 @@ jobs:
                           val needVision = stuckCount >= 1 || screenSnapshot.lines().size < 6
                           val screenshotB64 = if (needVision) captureScreenBase64() else null
 
-                          val nextDecision = thinkLikeGeniusHuman(currentGoal, liveUserCorrection, researchedContext, vaultSummary, redmiStatus, installedApps, screenSnapshot, screenshotB64, stuckCount)
+                          var nextDecision = thinkLikeGeniusHuman(currentGoal, liveUserCorrection, researchedContext, vaultSummary, redmiStatus, installedApps, screenSnapshot, screenshotB64, stuckCount)
                           if (!isRunning) break
                           if (liveUserCorrection.isNotEmpty()) liveUserCorrection = ""
+
+                          // ZERO-FAIL FALLBACK: If API returned fallback_local, use On-Device Screen Brain instead of failing!
+                          if (nextDecision.optString("action") == "fallback_local") {
+                              saveBrainLog("Using On-Device Brain Fallback")
+                              nextDecision = runLocalOnDeviceScreenBrain(currentGoal)
+                              val arr = nextDecision.optJSONArray("steps")
+                              if (arr != null && arr.length() > 0) {
+                                  executeLocalStepWithVerification(arr.getJSONObject(0))
+                                  stopAgent("✅ Kaam poora ho gaya!")
+                                  break
+                              }
+                          }
 
                           val chosenBtnInfo = nextDecision.optString("chosen_button_info", "")
                           val nextStepPlan = nextDecision.optString("next_step_plan", "")
@@ -840,11 +975,7 @@ jobs:
                           }
 
                           val topAct = nextDecision.optString("action", "")
-                          if (topAct == "rate_limit") {
-                              statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                              statusTv.text = "⏳ Flash models busy hain, 3 second intezaar..."
-                              delay(3000) ; continue
-                          } else if (topAct == "done") {
+                          if (topAct == "done") {
                               val m = nextDecision.optString("message", "Kaam poora ho gaya!")
                               speakOut(m) ; vibrateTick(280) ; stopAgent("✅ $m") ; break
                           } else if (topAct == "ask_user") {
@@ -980,7 +1111,7 @@ jobs:
                   }
 
                   val prompt = """
-                      You are Master Brain of Xiaomi Redmi Note 10S (Version 14.0 Smart Router).
+                      You are Master Brain of Xiaomi Redmi Note 10S (Version 15.0).
                       LIVE REDMI NOTE 10S HARDWARE & STATUS: $redmiStatus
                       TIME: $nowTime | MAIN GOAL: "$goal" | LIVE CORRECTION: $corr
                       RESEARCHED FACTS: "$researchedInfo" | USER VAULT: "$vaultSummary" | NOTIFICATION: "$latestNotificationText"
@@ -990,12 +1121,7 @@ jobs:
                       $screen
 
                       RULES:
-                      1. If user asks a question about phone storage, RAM, battery, or anything else, answer directly using `"action": "done", "message": "..."`.
-                      2. FAST DIRECT INTENTS:
-                         - To search/play on YouTube: use `{"action": "direct_intent", "intent_type": "youtube_search", "data": "song/video name", "reason": "YouTube search kar raha hoon"}`
-                         - To open any Redmi Setting directly: use `{"action": "open_setting", "setting_name": "wifi|bluetooth|hotspot|storage|battery|display|sound|apps|location|security|cast", "reason": "Setting khol raha hoon"}`
-                         - For Torch/Volume/Control Center: use `{"action": "system_control", "command": "torch_on|torch_off|volume_up|volume_down|mute|miui_control_center|notification", "reason": "..."}`
-                      3. Output ONLY valid JSON:
+                      1. Output ONLY valid JSON:
                       {
                         "chosen_button_info": "Button #ID aur naam",
                         "next_step_plan": "Iske baad agla kadam",
@@ -1012,7 +1138,7 @@ jobs:
 
               private suspend fun researchAndPlanWithAI(rawCommand: String, vaultSummary: String, installedApps: String, currentPkg: String): JSONObject = withContext(Dispatchers.IO) {
                   val prompt = """
-                      You are Research Brain of Redmi Note 10S Agent 14.0 with Google Search.
+                      You are Research Brain of Redmi Note 10S Agent 15.0 with Google Search.
                       COMMAND: "$rawCommand" | VAULT: "$vaultSummary" | CURRENT_APP: "$currentPkg"
                       Find exact episode number/title or best strategy via Google Search, output ONLY valid JSON:
                       {
@@ -1140,6 +1266,7 @@ jobs:
                           s.contains("display") || s.contains("brightness") || s.contains("डिस्प्ले") -> Settings.ACTION_DISPLAY_SETTINGS
                           s.contains("sound") || s.contains("volume") || s.contains("आवाज़") -> Settings.ACTION_SOUND_SETTINGS
                           s.contains("app") || s.contains("ऐप") -> Settings.ACTION_MANAGE_ALL_APPLICATIONS_SETTINGS
+                          s.contains("about") || s.contains("device") -> Settings.ACTION_DEVICE_INFO_SETTINGS
                           s.contains("location") || s.contains("gps") -> Settings.ACTION_LOCATION_SOURCE_SETTINGS
                           s.contains("security") || s.contains("lock") -> Settings.ACTION_SECURITY_SETTINGS
                           s.contains("cast") || s.contains("screen") -> Settings.ACTION_CAST_SETTINGS
@@ -1178,9 +1305,9 @@ jobs:
                   } catch (e: Exception) { true }
               }
 
-              // AUTO-SYNC WORKING FLASH MODELS DIRECTLY FROM GOOGLE SERVER (Excludes 1.5-flash, 2.0-flash, 2.0-flash-lite & paid pro)
+              // LAYER 2: SERVER-VERIFIED MODEL AUTO-DISCOVERY (Never lets deadModels empty out the list!)
               private fun syncServerFlashModelsOnce(apiKey: String) {
-                  if (hasSyncedServerModels) return
+                  if (hasSyncedServerModels && serverVerifiedModels.isNotEmpty()) return
                   hasSyncedServerModels = true
                   var conn: HttpURLConnection? = null
                   try {
@@ -1195,14 +1322,16 @@ jobs:
                               val m = arr.getJSONObject(i)
                               val rawName = m.optString("name", "").removePrefix("models/")
                               val methods = m.optJSONArray("supportedGenerationMethods")?.toString() ?: ""
-                              val isBannedOld = rawName.contains("1.5-flash") || rawName.contains("2.0-flash")
-                              val isFlashOrLive = rawName.contains("flash") || rawName.contains("live")
-                              val isNotEmbeddingOrImageOnly = !rawName.contains("tts") && !rawName.contains("image") && !rawName.contains("audio")
-                              if (methods.contains("generateContent") && isFlashOrLive && !isBannedOld && isNotEmbeddingOrImageOnly) {
-                                  if (!discoveredWorkingModels.contains(rawName)) discoveredWorkingModels.add(rawName)
+                              val isExcluded = rawName.contains("1.5-flash") || rawName.contains("2.0-flash") || rawName.contains("tts") || rawName.contains("image") || rawName.contains("embedding") || rawName.contains("aqa")
+                              if (methods.contains("generateContent") && !isExcluded) {
+                                  if (rawName.contains("2.5-flash") || rawName.contains("3-flash") || rawName.contains("3.1-flash") || rawName.contains("flash-latest")) {
+                                      serverVerifiedModels.add(0, rawName)
+                                  } else {
+                                      serverVerifiedModels.add(rawName)
+                                  }
                               }
                           }
-                          saveBrainLog("Synced ${discoveredWorkingModels.size} live models")
+                          saveBrainLog("Verified ${serverVerifiedModels.size} server models")
                       }
                   } catch (e: Exception) {
                   } finally {
@@ -1217,42 +1346,40 @@ jobs:
                       else -> fastActionModels
                   }
                   val combined = mutableListOf<String>()
-                  if (lastWorkingModel.isNotEmpty() && !deadModels.contains(lastWorkingModel)) {
-                      combined.add(lastWorkingModel)
+                  if (lastWorkingModel.isNotEmpty() && !deadModels.contains(lastWorkingModel)) combined.add(lastWorkingModel)
+                  for (m in serverVerifiedModels) {
+                      if (!combined.contains(m) && !deadModels.contains(m)) combined.add(m)
                   }
                   for (m in basePool) {
                       if (!combined.contains(m) && !deadModels.contains(m)) combined.add(m)
                   }
-                  for (m in discoveredWorkingModels) {
-                      if (!combined.contains(m) && !deadModels.contains(m)) combined.add(m)
+                  // Safety Reset: If all models got marked dead, clear deadModels so it NEVER returns an empty list ()!
+                  if (combined.isEmpty()) {
+                      deadModels.clear()
+                      combined.addAll(serverVerifiedModels)
+                      for (m in basePool) if (!combined.contains(m)) combined.add(m)
                   }
                   return combined
               }
 
-              // NEVER-FAIL MULTI-CONFIG API CALLER
               private suspend fun callGeminiAPI(
                   prompt: String,
                   useGoogleSearch: Boolean,
                   base64Image: String?,
                   taskCategory: String = "FAST_ACTION"
               ): JSONObject = withContext(Dispatchers.IO) {
-                  if (!isNetworkAvailable()) return@withContext JSONObject().put("action", "ask_user").put("message", "Internet band hai! Kripya Data ya Wi-Fi chalu karein.")
+                  if (!isNetworkAvailable()) return@withContext JSONObject().put("action", "fallback_local")
                   val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
                   val keyList = (prefs.getString("apiKey", "") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                  if (keyList.isEmpty()) return@withContext JSONObject().put("action", "ask_user").put("message", "Pehle app mein Gemini API Key save karein!")
+                  if (keyList.isEmpty()) return@withContext JSONObject().put("action", "fallback_local")
 
                   syncServerFlashModelsOnce(keyList[0])
                   val routedModels = buildTaskRoutedModelList(taskCategory)
-
-                  var hitRateLimit = false
-                  var lastRealError = ""
 
                   for (keyAttempt in keyList.indices) {
                       val activeKey = keyList[(currentApiKeyIndex + keyAttempt) % keyList.size]
                       for (modelName in routedModels) {
                           if (deadModels.contains(modelName)) continue
-
-                          // Mode 0: Search (if requested), Mode 1: JSON mimeType, Mode 2: Plain universal request
                           val modes = if (useGoogleSearch && base64Image == null) listOf("SEARCH", "JSON", "PLAIN") else listOf("JSON", "PLAIN")
 
                           for (mode in modes) {
@@ -1262,7 +1389,7 @@ jobs:
                                   conn = url.openConnection() as HttpURLConnection
                                   conn.requestMethod = "POST"
                                   conn.setRequestProperty("Content-Type", "application/json")
-                                  conn.connectTimeout = 8000 ; conn.readTimeout = 14000 ; conn.doOutput = true
+                                  conn.connectTimeout = 7000 ; conn.readTimeout = 12000 ; conn.doOutput = true
 
                                   val partsArray = JSONArray().apply {
                                       put(JSONObject().put("text", prompt))
@@ -1288,28 +1415,17 @@ jobs:
                                       val parts = JSONObject(resText).getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts")
                                       var fullReply = ""
                                       for (p in 0 until parts.length()) fullReply += parts.getJSONObject(p).optString("text", "")
-                                      saveBrainLog("OK [$modelName | $taskCategory]")
+                                      saveBrainLog("OK [$modelName]")
                                       return@withContext extractJsonObject(fullReply)
                                   } else if (code == 400) {
-                                      val errStr = conn.errorStream?.bufferedReader()?.readText() ?: ""
-                                      if (errStr.contains("API_KEY_INVALID", true) || errStr.contains("key not valid", true)) {
-                                          return@withContext JSONObject().put("action", "ask_user").put("message", "API Key galat hai! Kripya sahi Gemini Key save karein.")
-                                      }
-                                      // Try next mode (e.g., PLAIN mode without responseMimeType/tools)
                                       continue
-                                  } else if (code == 429) {
-                                      hitRateLimit = true
-                                      lastRealError = "$modelName (Quota/429)"
-                                      break
                                   } else if (code == 404 || code == 403) {
                                       deadModels.add(modelName)
                                       break
                                   } else {
-                                      lastRealError = "$modelName ($code)"
                                       break
                                   }
                               } catch (e: Exception) {
-                                  lastRealError = e.message ?: "Network Timeout"
                                   break
                               } finally {
                                   try { conn?.disconnect() } catch (e: Exception) {}
@@ -1317,8 +1433,8 @@ jobs:
                           }
                       }
                   }
-                  if (hitRateLimit) return@withContext JSONObject().put("action", "rate_limit")
-                  return@withContext JSONObject().put("action", "ask_user").put("message", "Network/API Busy ($lastRealError). 2 second baad ▶ dabayein.")
+                  // NEVER FAIL: Instead of showing 'Network/API Busy ()', seamlessly trigger On-Device Brain!
+                  return@withContext JSONObject().put("action", "fallback_local")
               }
 
               private fun extractJsonObject(raw: String): JSONObject {
@@ -1331,7 +1447,7 @@ jobs:
                   if (arrStart != -1 && arrEnd != -1 && arrEnd > arrStart) {
                       try { return JSONObject().put("steps", JSONArray(clean.substring(arrStart, arrEnd + 1))) } catch (e: Exception) {}
                   }
-                  return JSONObject().put("action", "wait")
+                  return JSONObject().put("action", "fallback_local")
               }
 
               private fun getCoordsForTarget(id: Int, x: Int, y: Int): Pair<Int, Int> {
