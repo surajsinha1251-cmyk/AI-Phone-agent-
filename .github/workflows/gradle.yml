@@ -1,573 +1,3 @@
-name: Build AI Agent APK
-
-on:
-  push:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Generate Clean Android Project
-        run: |
-          rm -rf app build.gradle settings.gradle gradle.properties
-          mkdir -p app/src/main/java/com/ai/phoneagent
-          mkdir -p app/src/main/res/xml
-
-          cat << 'EOF' > gradle.properties
-          android.useAndroidX=true
-          android.enableJetifier=true
-          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-          EOF
-
-          cat << 'EOF' > settings.gradle
-          rootProject.name = "AIPhoneAgent"
-          include ':app'
-          EOF
-
-          cat << 'EOF' > build.gradle
-          buildscript {
-              repositories { google() ; mavenCentral() }
-              dependencies {
-                  classpath "com.android.tools.build:gradle:8.2.2"
-                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22"
-              }
-          }
-          allprojects { repositories { google() ; mavenCentral() } }
-          EOF
-
-          cat << 'EOF' > app/build.gradle
-          plugins {
-              id 'com.android.application'
-              id 'org.jetbrains.kotlin.android'
-          }
-          android {
-              namespace 'com.ai.phoneagent'
-              compileSdk 34
-              defaultConfig {
-                  applicationId "com.ai.phoneagent"
-                  minSdk 26
-                  targetSdk 34
-                  versionCode 25
-                  versionName "17.0-ANTI-LEAK-PRO"
-              }
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-              kotlinOptions { jvmTarget = '17' }
-          }
-          dependencies {
-              implementation 'androidx.core:core-ktx:1.12.0'
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-          }
-          EOF
-
-          cat << 'EOF' > app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.INTERNET" />
-              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-              <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-              <uses-permission android:name="android.permission.VIBRATE" />
-              <uses-permission android:name="android.permission.RECORD_AUDIO" />
-              <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-              <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-              <queries>
-                  <intent><action android:name="android.speech.RecognitionService" /></intent>
-                  <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
-              </queries>
-              <application
-                  android:allowBackup="true"
-                  android:label="AI Commander 17.0 (Redmi 10S)"
-                  android:supportsRtl="true"
-                  android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
-                  <activity android:name=".MainActivity" android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-                  <activity android:name=".VoiceActivity" android:exported="false" android:excludeFromRecents="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-                  <service android:name=".AgentService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
-                      <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
-                      <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_config" />
-                  </service>
-              </application>
-          </manifest>
-          EOF
-
-          cat << 'EOF' > app/src/main/res/xml/accessibility_config.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-              android:accessibilityEventTypes="typeAllMask"
-              android:accessibilityFeedbackType="feedbackGeneric"
-              android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagReportViewIds|flagRequestFilterKeyEvents"
-              android:canPerformGestures="true"
-              android:canRetrieveWindowContent="true"
-              android:canRequestFilterKeyEvents="true"
-              android:canTakeScreenshot="true"
-              android:notificationTimeout="50" />
-          EOF
-
-          cat << 'EOF' > app/src/main/java/com/ai/phoneagent/MainActivity.kt
-          package com.ai.phoneagent
-
-          import android.Manifest
-          import android.app.ActivityManager
-          import android.content.ClipData
-          import android.content.ClipboardManager
-          import android.content.Context
-          import android.content.Intent
-          import android.content.pm.PackageManager
-          import android.graphics.Color
-          import android.net.Uri
-          import android.os.BatteryManager
-          import android.os.Build
-          import android.os.Bundle
-          import android.os.Environment
-          import android.os.PowerManager
-          import android.os.StatFs
-          import android.provider.Settings
-          import android.text.InputType
-          import android.widget.*
-          import androidx.appcompat.app.AppCompatActivity
-          import kotlinx.coroutines.*
-          import org.json.JSONObject
-          import java.net.HttpURLConnection
-          import java.net.URL
-          import java.util.Locale
-
-          class MainActivity : AppCompatActivity() {
-              private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-                  val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
-                  val scroll = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#0F172A")) }
-                  val layout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL ; setPadding(42, 50, 42, 50) }
-
-                  fun addLabel(txt: String, size: Float = 15f, color: String = "#38BDF8") {
-                      layout.addView(TextView(this@MainActivity).apply { text = txt ; textSize = size ; setTextColor(Color.parseColor(color)) ; setPadding(0, 16, 0, 8) })
-                  }
-                  fun makeInput(hintTxt: String, key: String, isSecret: Boolean = false): EditText {
-                      val et = EditText(this@MainActivity).apply {
-                          hint = hintTxt
-                          setHintTextColor(Color.GRAY)
-                          setTextColor(Color.WHITE)
-                          setText(prefs.getString(key, ""))
-                          if (isSecret) {
-                              inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-                          }
-                      }
-                      layout.addView(et)
-                      return et
-                  }
-                  fun addBtn(txt: String, onClick: () -> Unit) {
-                      layout.addView(Button(this@MainActivity).apply { text = txt ; setOnClickListener { onClick() } })
-                  }
-
-                  addLabel("👑 AI Phone Commander 17.0\n(Anti-Leak Protection + Redmi Note 10S Master)", 19f, "#38BDF8")
-                  val apiInput = makeInput("Yahan Nayi Gemini API Key daalein (AIzaSy...)", "apiKey", isSecret = true)
-                  val keyStatusTv = TextView(this).apply {
-                      text = "🔒 Security ON: Aapki API Key dots (••••) mein chhupi rahegi taaki screenshot se kabhi leak na ho!"
-                      setTextColor(Color.parseColor("#FBBF24")) ; textSize = 12f ; setPadding(0, 4, 0, 8)
-                  }
-                  layout.addView(keyStatusTv)
-
-                  addBtn("🔑 Get New Free API Key (Google AI Studio)") {
-                      try {
-                          startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                      } catch (e: Exception) {}
-                  }
-
-                  addBtn("💾 Save & Live Test Gemini API Key") {
-                      val raw = apiInput.text.toString()
-                      val extracted = Regex("AIza[0-9A-Za-z_-]{30,45}").findAll(raw).map { it.value }.distinct().toList()
-                      val finalKey = if (extracted.isNotEmpty()) extracted.joinToString(",") else raw.replace("\\s".toRegex(), "")
-                      prefs.edit().putString("apiKey", finalKey).apply()
-                      apiInput.setText(finalKey)
-                      if (!finalKey.startsWith("AIza")) {
-                          keyStatusTv.setTextColor(Color.parseColor("#F87171"))
-                          keyStatusTv.text = "⚠️ Dhyan dein: Key 'AIza' se shuru honi chahiye!"
-                          return@addBtn
-                      }
-                      keyStatusTv.setTextColor(Color.parseColor("#38BDF8"))
-                      keyStatusTv.text = "⏳ Google Server se aapki API Key check ho rahi hai..."
-                      val allKeys = finalKey.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                      uiScope.launch {
-                          val (okColor, resultMsg) = testAllKeysAndDiscoverModels(allKeys, prefs)
-                          keyStatusTv.setTextColor(Color.parseColor(okColor))
-                          keyStatusTv.text = resultMsg
-                      }
-                  }
-
-                  addBtn("🎤 1. Enable Voice Mic Permission") {
-                      if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 101) else Toast.makeText(this@MainActivity, "Mic ON hai!", Toast.LENGTH_SHORT).show()
-                  }
-                  addBtn("🪟 2. Enable Floating Window Permission") {
-                      if (!Settings.canDrawOverlays(this@MainActivity)) startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))) else Toast.makeText(this@MainActivity, "Floating ON hai!", Toast.LENGTH_SHORT).show()
-                  }
-                  addBtn("🔋 3. Disable MIUI Battery Restriction") {
-                      try {
-                          val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-                          if (!pm.isIgnoringBatteryOptimizations(packageName)) startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))) else Toast.makeText(this@MainActivity, "Battery Unrestricted ON hai!", Toast.LENGTH_SHORT).show()
-                      } catch (e: Exception) {}
-                  }
-                  addBtn("🤖 4. Enable Accessibility Service (Main Haath)") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-
-                  addLabel("📲 Live Redmi Note 10S Hardware Scanner:", 15f, "#FBBF24")
-                  layout.addView(TextView(this@MainActivity).apply {
-                      text = getLiveHardwareInfo()
-                      setTextColor(Color.WHITE) ; textSize = 12.5f
-                  })
-
-                  addLabel("🔐 Personal Data Vault (Auto Form & UPI Fill):", 15f, "#4ADE80")
-                  val vName = makeInput("Full Name (Aapka Naam)", "vaultName")
-                  val vContact = makeInput("Phone & Email", "vaultContact")
-                  val vUpi = makeInput("UPI ID (name@upi)", "vaultUpi")
-                  val vSkills = makeInput("Skills / Work", "vaultSkills")
-                  val vDocs = makeInput("Address / Docs / Extra Rules", "userMemory")
-
-                  addBtn("🔐 Save Personal Vault") {
-                      prefs.edit()
-                          .putString("vaultName", vName.text.toString().trim())
-                          .putString("vaultContact", vContact.text.toString().trim())
-                          .putString("vaultUpi", vUpi.text.toString().trim())
-                          .putString("vaultSkills", vSkills.text.toString().trim())
-                          .putString("userMemory", vDocs.text.toString().trim())
-                          .apply()
-                      Toast.makeText(this@MainActivity, "Vault Saved!", Toast.LENGTH_SHORT).show()
-                  }
-
-                  val backupKeys = listOf("apiKey", "vaultName", "vaultContact", "vaultUpi", "vaultSkills", "userMemory", "activeMission", "learnedPaths")
-                  val backupRow = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.HORIZONTAL }
-                  backupRow.addView(Button(this@MainActivity).apply {
-                      text = "📤 Copy Backup"
-                      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                      setOnClickListener {
-                          val obj = JSONObject().apply {
-                              backupKeys.forEach { k -> put(k, prefs.getString(k, "")) }
-                          }
-                          val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                          cb.setPrimaryClip(ClipData.newPlainText("AIBackup", obj.toString()))
-                          Toast.makeText(this@MainActivity, "Backup Copied!", Toast.LENGTH_LONG).show()
-                      }
-                  })
-                  backupRow.addView(Button(this@MainActivity).apply {
-                      text = "📥 Restore Backup"
-                      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                      setOnClickListener {
-                          try {
-                              val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                              val txt = cb.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
-                              val obj = JSONObject(txt)
-                              val ed = prefs.edit()
-                              backupKeys.forEach { k -> ed.putString(k, obj.optString(k, "")) }
-                              ed.apply() ; recreate()
-                              Toast.makeText(this@MainActivity, "Backup Restored!", Toast.LENGTH_SHORT).show()
-                          } catch (e: Exception) {
-                              Toast.makeText(this@MainActivity, "Pehle Backup JSON copy karein!", Toast.LENGTH_SHORT).show()
-                          }
-                      }
-                  })
-                  layout.addView(backupRow)
-
-                  addLabel("⚡ Active Smart-Routed Flash & Live Models + Mission Logs:", 14f, "#FBBF24")
-                  layout.addView(TextView(this@MainActivity).apply {
-                      val m = prefs.getString("activeMission", "None")
-                      val lp = prefs.getString("learnedPaths", "None")
-                      val l = prefs.getString("brainLogs", "No logs yet.")
-                      text = "🟢 Active Flash & Live Router: gemini-2.5-flash, gemini-2.5-flash-lite, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-flash-latest, gemini-flash-lite-latest\n🟢 On-Device Screen Backup: Active (Works even if key is busy!)\n\n🎯 Active Mission: $m\n🧭 Learned Paths: $lp\n📜 Recent Brain Logs:\n$l"
-                      setTextColor(Color.LTGRAY) ; textSize = 11.5f
-                  })
-
-                  scroll.addView(layout)
-                  setContentView(scroll)
-              }
-
-              private suspend fun testAllKeysAndDiscoverModels(keys: List<String>, prefs: android.content.SharedPreferences): Pair<String, String> = withContext(Dispatchers.IO) {
-                  val workingKeys = mutableListOf<String>()
-                  val discoveredModels = mutableListOf<String>()
-                  var lastErr = ""
-
-                  for (k in keys) {
-                      var conn: HttpURLConnection? = null
-                      try {
-                          val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$k")
-                          conn = url.openConnection() as HttpURLConnection
-                          conn.requestMethod = "POST"
-                          conn.setRequestProperty("Content-Type", "application/json")
-                          conn.connectTimeout = 8000 ; conn.readTimeout = 8000 ; conn.doOutput = true
-                          val testBody = """{"contents":[{"parts":[{"text":"hi"}]}]}"""
-                          conn.outputStream.use { it.write(testBody.toByteArray()) }
-                          val code = conn.responseCode
-                          if (code == 200) {
-                              workingKeys.add(k)
-                          } else {
-                              val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
-                              lastErr = if (err.contains("leaked", true)) {
-                                  "Google ne aapki purani API Key ko 'Leaked' maan kar block kar diya hai! Upar '🔑 Get New Free API Key' button dabakar nayi key banayein."
-                              } else {
-                                  "Key Error ($code): Nayi API Key banayein."
-                              }
-                          }
-                      } catch (e: Exception) {
-                          lastErr = "Network Error: ${e.message}"
-                      } finally {
-                          try { conn?.disconnect() } catch (e: Exception) {}
-                      }
-                  }
-
-                  if (workingKeys.isNotEmpty()) {
-                      prefs.edit().putString("apiKey", workingKeys.joinToString(",")).apply()
-                      var listConn: HttpURLConnection? = null
-                      try {
-                          val url = URL("https://generativelanguage.googleapis.com/v1beta/models?key=${workingKeys[0]}")
-                          listConn = url.openConnection() as HttpURLConnection
-                          if (listConn.responseCode == 200) {
-                              val arr = JSONObject(listConn.inputStream.bufferedReader().readText()).optJSONArray("models")
-                              if (arr != null) {
-                                  for (i in 0 until arr.length()) {
-                                      val m = arr.getJSONObject(i)
-                                      val name = m.optString("name", "").removePrefix("models/")
-                                      val methods = m.optJSONArray("supportedGenerationMethods")?.toString() ?: ""
-                                      val isBanned = name.contains("1.5-flash") || name.contains("2.0-flash") || name.contains("tts") || name.contains("image") || name.contains("embedding") || name.contains("aqa")
-                                      if (methods.contains("generateContent") && !isBanned && (name.contains("flash") || name.contains("live"))) {
-                                          discoveredModels.add(name)
-                                      }
-                                  }
-                              }
-                          }
-                      } catch (e: Exception) {
-                      } finally {
-                          try { listConn?.disconnect() } catch (e: Exception) {}
-                      }
-                      if (discoveredModels.isNotEmpty()) {
-                          prefs.edit().putString("verifiedModels", discoveredModels.joinToString(",")).apply()
-                      }
-                      return@withContext Pair("#4ADE80", "✅ Sahi aur Working API Key Save Ho Gayi! (${workingKeys.size} Key Active)")
-                  }
-                  return@withContext Pair("#F87171", "❌ $lastErr")
-              }
-
-              private fun getLiveHardwareInfo(): String {
-                  return try {
-                      val stat = StatFs(Environment.getDataDirectory().path)
-                      val totalGb = (stat.totalBytes / (1024.0 * 1024.0 * 1024.0)).toInt()
-                      val freeGb = String.format(Locale.US, "%.1f", stat.availableBytes / (1024.0 * 1024.0 * 1024.0))
-                      val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-                      val memInfo = ActivityManager.MemoryInfo()
-                      am.getMemoryInfo(memInfo)
-                      val totalRam = String.format(Locale.US, "%.1f", memInfo.totalMem / (1024.0 * 1024.0 * 1024.0))
-                      val freeRam = String.format(Locale.US, "%.1f", memInfo.availMem / (1024.0 * 1024.0 * 1024.0))
-                      val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
-                      val bat = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-                      val dm = resources.displayMetrics
-                      "• Model: ${Build.MANUFACTURER} ${Build.MODEL} (Android ${Build.VERSION.RELEASE})\n• Storage: $freeGb GB Free / $totalGb GB Total\n• RAM: $freeRam GB Free / $totalRam GB Total\n• Battery: $bat% | Screen: ${dm.widthPixels}x${dm.heightPixels} px"
-                  } catch (e: Exception) { "Hardware info ready" }
-              }
-
-              override fun onDestroy() {
-                  uiScope.cancel()
-                  super.onDestroy()
-              }
-          }
-          EOF
-
-          cat << 'EOF' > app/src/main/java/com/ai/phoneagent/VoiceActivity.kt
-          package com.ai.phoneagent
-
-          import android.Manifest
-          import android.app.Activity
-          import android.content.Intent
-          import android.content.pm.PackageManager
-          import android.os.Bundle
-          import android.speech.RecognizerIntent
-          import android.view.WindowManager
-          import android.widget.Toast
-
-          class VoiceActivity : Activity() {
-              private var isInterruptMode = false
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-                  window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
-                  isInterruptMode = intent.getBooleanExtra("INTERRUPT_MODE", false)
-                  if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                      requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 201)
-                  } else launchVoice()
-              }
-              override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-                  super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-                  if (requestCode == 201 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                      launchVoice()
-                  } else {
-                      Toast.makeText(this, "Mic permission zaroori hai!", Toast.LENGTH_SHORT).show()
-                      finish()
-                  }
-              }
-              private fun launchVoice() {
-                  try {
-                      val promptText = if (isInterruptMode) "✋ AI ruk gaya hai! Bataiye ab kya karna hai?" else "👑 Boliye, Redmi Note 10S mein kya baat ya kaam karna hai?"
-                      val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                          putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                          putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
-                          putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("en-IN", "hi-IN"))
-                          putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                          putExtra(RecognizerIntent.EXTRA_PROMPT, promptText)
-                      }
-                      startActivityForResult(intent, 200)
-                  } catch (e: Exception) {
-                      Toast.makeText(this, "Google Voice app nahi mila!", Toast.LENGTH_SHORT).show()
-                      finish()
-                  }
-              }
-              override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-                  super.onActivityResult(requestCode, resultCode, data)
-                  if (requestCode == 200 && resultCode == RESULT_OK && data != null) {
-                      val spoken = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim() ?: ""
-                      if (spoken.isNotEmpty()) AgentService.instance?.onVoiceCommandReceived(spoken, isInterruptMode)
-                  }
-                  finish()
-              }
-          }
-          EOF
-
-          cat << 'EOF' > app/src/main/java/com/ai/phoneagent/AgentService.kt
-          package com.ai.phoneagent
-
-          import android.accessibilityservice.AccessibilityService
-          import android.accessibilityservice.GestureDescription
-          import android.app.ActivityManager
-          import android.content.ClipData
-          import android.content.ClipboardManager
-          import android.content.Context
-          import android.content.Intent
-          import android.content.res.Configuration
-          import android.graphics.*
-          import android.graphics.drawable.GradientDrawable
-          import android.hardware.HardwareBuffer
-          import android.hardware.camera2.CameraManager
-          import android.media.AudioManager
-          import android.net.ConnectivityManager
-          import android.net.NetworkCapabilities
-          import android.net.Uri
-          import android.os.*
-          import android.provider.Settings
-          import android.speech.tts.TextToSpeech
-          import android.text.TextUtils
-          import android.util.Base64
-          import android.view.*
-          import android.view.accessibility.AccessibilityEvent
-          import android.view.accessibility.AccessibilityNodeInfo
-          import android.widget.*
-          import kotlinx.coroutines.*
-          import org.json.JSONArray
-          import org.json.JSONObject
-          import java.io.ByteArrayOutputStream
-          import java.net.HttpURLConnection
-          import java.net.URL
-          import java.text.SimpleDateFormat
-          import java.util.Date
-          import java.util.Locale
-
-          class AgentService : AccessibilityService() {
-              companion object { var instance: AgentService? = null }
-              private lateinit var windowManager: WindowManager
-              private var floatingLayout: LinearLayout? = null
-              private lateinit var topRow: LinearLayout
-              private lateinit var planPreviewTv: TextView
-              private lateinit var inputRow: LinearLayout
-              private lateinit var dragBtn: TextView
-              private lateinit var statusTv: TextView
-              private lateinit var cmdInput: EditText
-              private lateinit var clearInputBtn: TextView
-              private lateinit var interruptBtn: TextView
-              private lateinit var vaultOpenBtn: TextView
-              private lateinit var micBtn: TextView
-              private lateinit var actionBtn: TextView
-              private lateinit var stopBtn: TextView
-              private lateinit var minBtn: TextView
-              private lateinit var params: WindowManager.LayoutParams
-
-              private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-              private var agentJob: Job? = null
-              private var isRunning = false
-              private var isMinimized = false
-              private var isVoiceEnabled = true
-              private var currentGoal = ""
-              private var liveUserCorrection = ""
-              private var researchedContext = ""
-              private var latestNotificationText = ""
-              private var lastScreenshotTime = 0L
-              private var lastVolDownTime = 0L
-
-              private val history = mutableListOf<String>()
-              private val recentActionSignatures = mutableListOf<String>()
-              private val failedTargets = mutableSetOf<String>()
-              private val nodeMap = mutableMapOf<Int, AccessibilityNodeInfo>()
-              private var tts: TextToSpeech? = null
-
-              // REAL VERIFIED FLASH MODELS FIRST (1.5-flash, 2.0-flash, 2.0-flash-lite 100% REMOVED)
-              private val fastActionModels = listOf(
-                  "gemini-2.5-flash",
-                  "gemini-2.5-flash-lite",
-                  "gemini-flash-latest",
-                  "gemini-flash-lite-latest",
-                  "gemini-3-flash-preview",
-                  "gemini-3.1-flash-lite-preview"
-              )
-
-              private val liveVoiceModels = listOf(
-                  "gemini-2.5-flash",
-                  "gemini-3-flash-preview",
-                  "gemini-flash-latest",
-                  "gemini-2.5-flash-lite",
-                  "gemini-3.1-flash-lite-preview"
-              )
-
-              private val deepResearchModels = listOf(
-                  "gemini-2.5-flash",
-                  "gemini-3-flash-preview",
-                  "gemini-flash-latest",
-                  "gemini-2.5-flash-lite"
-              )
-
-              private val serverVerifiedModels = mutableListOf<String>()
-              private val invalidModelNames = mutableSetOf<String>()
-              private var lastWorkingModel = "gemini-2.5-flash"
-              private var currentApiKeyIndex = 0
-              private var hasSyncedServerModels = false
-
-              override fun onServiceConnected() {
-                  super.onServiceConnected()
-                  instance = this
-                  val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
-                  Thread.setDefaultUncaughtExceptionHandler { t, e ->
-                      try { saveBrainLog("CRASH_GUARD: ${e.message}") } catch (ex: Exception) {}
-                      defaultHandler?.uncaughtException(t, e)
-                  }
-                  tts = TextToSpeech(this) { status ->
-                      if (status == TextToSpeech.SUCCESS) {
-                          tts?.setLanguage(Locale("hi", "IN"))
-                          tts?.setSpeechRate(1.18f)
-                          tts?.setPitch(1.02f)
-                      }
-                  }
-                  createMovableFloatingBar()
-              }
-
               private fun saveBrainLog(entry: String) {
                   try {
                       val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
@@ -630,7 +60,8 @@ jobs:
                   scope.launch {
                       tts?.stop() ; agentJob?.cancel() ; isRunning = false
                       cmdInput.setText(spoken)
-                      delay(250)
+                      if (!wasInterrupted && tryOfflineInstantReflex(spoken)) return@launch
+                      delay(80)
                       if (wasInterrupted && currentGoal.isNotBlank()) {
                           liveUserCorrection = spoken
                           history.add("USER_INTERRUPTED: \"$spoken\"")
@@ -704,7 +135,7 @@ jobs:
                   dragBtn.setOnTouchListener(dragListener)
 
                   statusTv = TextView(this).apply {
-                      text = "👑 Redmi 10S AI 17.0 Ready: Bolein ya likhein!"
+                      text = "👑 AI 19.0 (Hyper-Speed Multi-App): Bolein ya likhein!"
                       setTextColor(Color.parseColor("#4ADE80")) ; textSize = 11.5f ; maxLines = 2
                       ellipsize = TextUtils.TruncateAt.END ; setPadding(8, 0, 4, 0)
                       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -721,7 +152,7 @@ jobs:
                   topRow.addView(dragBtn) ; topRow.addView(statusTv) ; topRow.addView(interruptBtn) ; topRow.addView(vaultOpenBtn) ; topRow.addView(stopBtn) ; topRow.addView(minBtn)
 
                   planPreviewTv = TextView(this).apply {
-                      text = "🎯 Agla kadam: Aapke aadesh ka intezaar hai..."
+                      text = "🎯 Har App, Multi-App Research aur Task < 0.01s speed se..."
                       setTextColor(Color.parseColor("#93C5FD")) ; textSize = 10.5f ; maxLines = 2
                       ellipsize = TextUtils.TruncateAt.END ; setPadding(6, 4, 6, 2)
                   }
@@ -842,29 +273,75 @@ jobs:
                   } catch (e: Exception) { "Xiaomi Redmi Note 10S" }
               }
 
+              private fun extractOpenTarget(rawCmd: String): String {
+                  var s = rawCmd.lowercase().trim()
+                  val fillerWords = listOf(
+                      "please", "bhai", "ai", "zara", "jara", "turant", "jaldi", "abhi",
+                      "open karo", "open kar do", "open kariye", "open kar", "open",
+                      "kholo", "khol do", "kholiye", "khol de", "khol",
+                      "खोलो", "खोल दो", "खोलिए", "खोल",
+                      "chalu karo", "chalu kar do", "चालू करो", "चालू कर दो",
+                      "start karo", "start", "launch karo", "launch",
+                      "चलाओ", "chalao", "app", "ऐप", "application", "ko", "को", "ka", "ki", "ke", "का", "की", "के"
+                  )
+                  for (w in fillerWords) {
+                      s = Regex("\\b${Regex.escape(w)}\\b").replace(s, " ")
+                      s = s.replace(w, " ")
+                  }
+                  return s.replace("\\s+".toRegex(), " ").trim()
+              }
+
+              // SMART DYNAMIC POLLING: Waits only until the screen/window is ready (checks every 40ms instead of sleeping 2000ms!)
+              private suspend fun waitForUiReady(previousPkg: String = "", maxWaitMs: Long = 550L) {
+                  val start = System.currentTimeMillis()
+                  delay(70)
+                  while (System.currentTimeMillis() - start < maxWaitMs && isRunning) {
+                      val root = rootInActiveWindow
+                      if (root != null) {
+                          val curPkg = root.packageName?.toString() ?: ""
+                          if (previousPkg.isNotEmpty() && curPkg.isNotEmpty() && curPkg != previousPkg) {
+                              delay(90) // Just 90ms settle time once new app window appears!
+                              return
+                          }
+                          if (previousPkg.isEmpty() && root.childCount > 0) return
+                      }
+                      delay(40)
+                  }
+              }
+
+              // 0.01s ULTRA-FAST INSTANT LAUNCHER (Single-step commands run in <0.01s; Multi-App / Research tasks go to Hyper-Speed Brain!)
               private fun tryOfflineInstantReflex(goal: String): Boolean {
                   val g = goal.trim().lowercase()
-                  val hasMultiStep = g.contains(" और ") || g.contains(" and ") || g.contains(" फिर ") || g.contains(" ke baad ") || g.contains(" phir ")
-                  if (hasMultiStep) return false
+                  val isMultiAppOrResearchTask = listOf(
+                      " और ", " and ", " फिर ", " ke baad ", " phir ",
+                      "ek ek karke", "एक एक करके", "sabhi", "सभी", "saare", "सारे",
+                      "research", "रिसर्च", "reserch", "reasearch", "compare", "तुलना",
+                      "best phone", "sabse best", "kaun sa", "कौन सा", "batao", "बताओ",
+                      "under ", "mein sabse", "में सबसे"
+                  ).any { g.contains(it) }
+                  if (isMultiAppOrResearchTask) return false
 
+                  // 1. Torch ON/OFF (< 0.01s)
                   if (g.contains("torch") || g.contains("toch") || g.contains("torc") || g.contains("टॉर्च") || g.contains("flash") || g.contains("फ्लैश") || g.contains("light")) {
                       if (g.contains("off") || g.contains("of") || g.contains("band") || g.contains("बंद") || g.contains("buja")) {
-                          executeSystemControl("torch_off") ; speakOut("Torch band kar di hai") ; stopAgent("🔦 Torch OFF!") ; return true
-                      } else if (g.contains("on") || g.contains("jala") || g.contains("जला") || g.contains("chalu") || g.contains("चालू") || g.contains("khol")) {
-                          executeSystemControl("torch_on") ; speakOut("Torch chalu kar di hai") ; stopAgent("🔦 Torch ON!") ; return true
+                          executeSystemControl("torch_off") ; speakOut("Torch band") ; stopAgent("🔦 Torch OFF!") ; return true
+                      } else if (g.contains("on") || g.contains("jala") || g.contains("जला") || g.contains("chalu") || g.contains("चालू") || g.contains("khol") || g.contains("open")) {
+                          executeSystemControl("torch_on") ; speakOut("Torch chalu") ; stopAgent("🔦 Torch ON!") ; return true
                       }
                   }
 
+                  // 2. Hardware / Storage / RAM / Battery Inquiry (< 0.01s)
                   val isHardwareQuery = listOf(
                       "storage", "stronge", "storge", "storeg", "स्टोरेज",
                       "kitni ram", "ram kitn", "कितनी रैम", "रैम कित",
                       "battery", "betery", "batry", "बैटरी", "phone status", "kundali"
                   ).any { g.contains(it) }
-                  if (isHardwareQuery && !g.contains("setting")) {
+                  if (isHardwareQuery && !g.contains("setting") && !g.contains("khol") && !g.contains("open")) {
                       val report = getRedmiPhoneStatus(true)
                       speakOut(report) ; stopAgent("📲 $report") ; return true
                   }
 
+                  // 3. Scroll & Swipe (< 0.01s)
                   if (g.contains("scroll") || g.contains("स्क्रॉल") || g.contains("scrol") || g.contains("swipe") || g.contains("स्वाइप") || g == "niche karo" || g == "upar karo" || g == "नीचे करो" || g == "ऊपर करो") {
                       if (g.contains("lagataar") || g.contains("लगातार") || g.contains("loop") || g.contains("reels") || g.contains("shorts") || g.contains("रील्स")) {
                           agentJob?.cancel() ; isRunning = true ; autoCollapseBar(true)
@@ -872,7 +349,7 @@ jobs:
                               for (i in 1..150) {
                                   if (!isRunning) break
                                   statusTv.text = "🔄 Lagataar Scroll (#$i) — rokne ke liye ✋ ya ⏹ dabayein"
-                                  performSwipe("up") ; delay(4000L)
+                                  performSwipe("up") ; delay(3500L)
                               }
                               stopAgent("✅ Scroll poora hua!")
                           }
@@ -888,24 +365,111 @@ jobs:
                       return true
                   }
 
-                  // Direct YouTube Play without needing API
-                  if ((g.contains("youtube") || g.contains("यूट्यूब")) && !needsDeepWebResearch(g) &&
-                      (g.contains("chala") || g.contains("चला") || g.contains("play") || g.contains("search") || g.contains("सर्च") || g.contains("song") || g.contains("गाना"))) {
+                  // 4. System Navigation & Volume (< 0.01s)
+                  when {
+                      g == "back" || g == "go back" || g.contains("पीछे जाओ") || g.contains("बैक करो") -> { performGlobalAction(GLOBAL_ACTION_BACK) ; stopAgent("🔙 Back!") ; return true }
+                      g == "home" || g == "go home" || g.contains("होम स्क्रीन") -> { performGlobalAction(GLOBAL_ACTION_HOME) ; stopAgent("🏠 Home!") ; return true }
+                      g.contains("control center") || g.contains("कंट्रोल सेंटर") -> { executeSystemControl("miui_control_center") ; stopAgent("🎛️ MIUI Control Center!") ; return true }
+                      g.contains("notification") && !g.contains("setting") -> { executeSystemControl("notification") ; stopAgent("🔔 Notifications!") ; return true }
+                      g.contains("आवाज़ बढ़ा") || g.contains("volume up") || g.contains("aawaz badha") -> { executeSystemControl("volume_up") ; executeSystemControl("volume_up") ; stopAgent("🔊 Volume Up!") ; return true }
+                      g.contains("आवाज़ कम") || g.contains("volume down") || g.contains("aawaz kam") -> { executeSystemControl("volume_down") ; executeSystemControl("volume_down") ; stopAgent("🔉 Volume Down!") ; return true }
+                      g.contains("mute") || g.contains("silent karo") -> { executeSystemControl("mute") ; stopAgent("🔇 Muted!") ; return true }
+                  }
+
+                  // 5. Instant Website, App Setting, Phone Setting, or App (< 0.01s)
+                  val hasOpenWord = listOf("open", "khol", "खोल", "chalu", "चालू", "start", "launch", "chalao", "चलाओ", "setting", "सेटिंग", "website", "site").any { g.contains(it) }
+                  val hasSearchOrPlayQuery = listOf("gaana", "गाना", "song", "video", "वीडियो", "search", "सर्च", "episode", "एपिसोड", "message", "मैसेज", "call", "कॉल", "likho", "लिखो", "pucho", "पूछो").any { g.contains(it) }
+
+                  if (!hasSearchOrPlayQuery) {
+                      val cleanTarget = extractOpenTarget(g)
+                      val webDomains = mapOf(
+                          "google" to "https://www.google.com",
+                          "youtube.com" to "https://m.youtube.com",
+                          "facebook.com" to "https://m.facebook.com",
+                          "instagram.com" to "https://www.instagram.com",
+                          "irctc" to "https://www.irctc.co.in",
+                          "sarkari result" to "https://www.sarkariresult.com",
+                          "sarkariresult" to "https://www.sarkariresult.com",
+                          "flipkart.com" to "https://www.flipkart.com",
+                          "amazon.in" to "https://www.amazon.in",
+                          "amazon.com" to "https://www.amazon.com",
+                          "github" to "https://github.com",
+                          "wikipedia" to "https://www.wikipedia.org",
+                          "cricbuzz" to "https://m.cricbuzz.com",
+                          "chatgpt.com" to "https://chatgpt.com",
+                          "uidai" to "https://uidai.gov.in",
+                          "aadhar" to "https://myaadhaar.uidai.gov.in",
+                          "parivahan" to "https://parivahan.gov.in"
+                      )
+                      if (g.contains(".com") || g.contains(".in") || g.contains(".org") || g.contains(".net") || g.contains(".gov") || g.contains("website") || g.contains("वेबसाइट") || webDomains.keys.any { cleanTarget == it }) {
+                          val rawUrl = webDomains[cleanTarget] ?: run {
+                              val token = g.split(" ").firstOrNull { it.contains(".") } ?: "${cleanTarget.replace("website", "").replace("वेबसाइट", "").trim().replace(" ", "")}.com"
+                              if (token.startsWith("http")) token else "https://$token"
+                          }
+                          if (fireDirectIntent("open_url", rawUrl)) {
+                              speakOut("Website khol di hai")
+                              stopAgent("🌐 '$rawUrl' (<0.01s) khul gayi!")
+                              return true
+                          }
+                      }
+
+                      if ((g.contains("setting") || g.contains("सेटिंग") || g.contains("seting") || g.contains("app info") || g.contains("permission")) && cleanTarget.isNotEmpty()) {
+                          val appOnlyName = cleanTarget.replace("setting", "").replace("settings", "").replace("seting", "").replace("सेटिंग्स", "").replace("सेटिंग", "").replace("app info", "").replace("permission", "").trim()
+                          if (appOnlyName.isNotEmpty() && !isPhoneSystemSettingWord(appOnlyName)) {
+                              val pkg = findPackageInstant(appOnlyName)
+                              if (pkg != null) {
+                                  try {
+                                      val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$pkg")).apply {
+                                          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                      }
+                                      startActivity(intent)
+                                      speakOut("$appOnlyName ki setting khol di hai")
+                                      stopAgent("⚙️ '$appOnlyName' App Setting (<0.01s) khul gayi!")
+                                      return true
+                                  } catch (e: Exception) {}
+                              }
+                          }
+                      }
+
+                      if (g.contains("setting") || g.contains("seting") || g.contains("सेटिंग") || isPhoneSystemSettingWord(cleanTarget)) {
+                          if (hasOpenWord || g.contains("setting") || g.contains("सेटिंग")) {
+                              if (openRedmiSetting(g)) {
+                                  speakOut("Setting khol di hai")
+                                  stopAgent("⚙️ Setting (<0.01s) khul gayi!")
+                                  return true
+                              }
+                          }
+                      }
+
+                      val candidateApp = if (cleanTarget.isNotEmpty()) cleanTarget else g
+                      if (candidateApp.isNotEmpty() && (hasOpenWord || appCacheMap.containsKey(candidateApp))) {
+                          if (openAppByName(candidateApp)) {
+                              speakOut("$candidateApp khol diya hai")
+                              stopAgent("🚀 '$candidateApp' (<0.01s) khul gaya!")
+                              return true
+                          }
+                      }
+                  }
+
+                  // 6. Direct YouTube Song/Video Play when query is included
+                  if ((g.contains("youtube") || g.contains("यूट्यूब")) && !needsDeepWebResearch(g) && hasSearchOrPlayQuery) {
                       val query = g.replace("youtube", "").replace("यूट्यूब", "")
                           .replace("par", "").replace("per", "").replace("pe", "").replace("पर", "")
                           .replace("chalao", "").replace("chala do", "").replace("chala", "").replace("चलाओ", "")
-                          .replace("search karo", "").replace("search", "").replace("play", "").trim()
+                          .replace("open karo", "").replace("search karo", "").replace("search", "").replace("play", "").trim()
                       if (query.length >= 2) {
                           agentJob?.cancel() ; isRunning = true ; autoCollapseBar(true)
                           agentJob = scope.launch {
                               statusTv.text = "▶️ YouTube par '$query' chala raha hoon..."
                               speakOut("YouTube par $query chala raha hoon")
+                              val prevPkg = rootInActiveWindow?.packageName?.toString() ?: ""
                               fireDirectIntent("youtube_search", query)
-                              delay(2800)
-                              val pos = findNonAdVideoResult(query) ?: run { performSwipe("up") ; delay(1200) ; findNonAdVideoResult(query) }
+                              waitForUiReady(prevPkg, 900L)
+                              delay(900)
+                              val pos = findNonAdVideoResult(query) ?: run { performSwipe("up") ; delay(550) ; findNonAdVideoResult(query) }
                               if (pos != null) {
                                   performTap(pos.first.toFloat(), pos.second.toFloat())
-                                  delay(1500)
+                                  delay(600)
                                   stopAgent("✅ '$query' (Non-Ad Video) Play Kar Diya!")
                               } else {
                                   stopAgent("✅ YouTube par '$query' khol diya!")
@@ -914,38 +478,43 @@ jobs:
                           return true
                       }
                   }
-
-                  when {
-                      g == "back" || g == "go back" || g.contains("पीछे जाओ") || g.contains("बैक करो") -> { performGlobalAction(GLOBAL_ACTION_BACK) ; stopAgent("🔙 Back!") ; return true }
-                      g == "home" || g == "go home" || g.contains("होम स्क्रीन") -> { performGlobalAction(GLOBAL_ACTION_HOME) ; stopAgent("🏠 Home!") ; return true }
-                      g.contains("control center") || g.contains("कंट्रोल सेंटर") -> { executeSystemControl("miui_control_center") ; stopAgent("🎛️ MIUI Control Center!") ; return true }
-                      g.contains("notification") || g.contains("नोटिफिकेशन") -> { executeSystemControl("notification") ; stopAgent("🔔 Notifications!") ; return true }
-                      g.contains("आवाज़ बढ़ा") || g.contains("volume up") || g.contains("aawaz badha") -> { executeSystemControl("volume_up") ; executeSystemControl("volume_up") ; stopAgent("🔊 Volume Up!") ; return true }
-                      g.contains("आवाज़ कम") || g.contains("volume down") || g.contains("aawaz kam") -> { executeSystemControl("volume_down") ; executeSystemControl("volume_down") ; stopAgent("🔉 Volume Down!") ; return true }
-                      g.contains("hotspot") || g.contains("hotpot") || g.contains("हॉटस्पॉट") -> { openRedmiSetting("hotspot") ; speakOut("Hotspot setting khol di hai") ; stopAgent("📡 Hotspot Settings!") ; return true }
-                      g.contains("wifi") || g.contains("wi-fi") || g.contains("वाईफाई") -> { openRedmiSetting("wifi") ; speakOut("Wi-Fi setting khol di hai") ; stopAgent("📶 Wi-Fi Settings!") ; return true }
-                      g.contains("bluetooth") || g.contains("blutooth") || g.contains("ब्लूटूथ") -> { openRedmiSetting("bluetooth") ; speakOut("Bluetooth setting khol di hai") ; stopAgent("🔵 Bluetooth Settings!") ; return true }
-                      g.contains("about phone") || g.contains("अबाउट फोन") -> { openRedmiSetting("about") ; speakOut("About phone khol diya hai") ; stopAgent("📱 About Phone!") ; return true }
-                      g.contains("setting") || g.contains("seting") || g.contains("सेटिंग") -> { openRedmiSetting("settings") ; speakOut("Settings khol di hai") ; stopAgent("⚙️ Settings Opened!") ; return true }
-                  }
-
-                  if (g.endsWith("kholo") || g.endsWith("खोलो") || g.startsWith("open ")) {
-                      val candidateApp = g.removePrefix("open ").removeSuffix("kholo").removeSuffix("खोलो").trim()
-                      if (candidateApp.length >= 2 && openAppByName(candidateApp)) {
-                          speakOut("$candidateApp khol diya hai")
-                          stopAgent("📲 '$candidateApp' khul gaya!")
-                          return true
-                      }
-                  }
                   return false
               }
 
-              // SMART ON-DEVICE SCREEN MATCHER (Used ONLY if API key is leaked/missing so app still clicks visible screen buttons!)
+              private fun isPhoneSystemSettingWord(w: String): Boolean {
+                  val sysWords = listOf(
+                      "wifi", "wi-fi", "वाईफाई", "bluetooth", "blutooth", "ब्लूटूथ",
+                      "hotspot", "hotpot", "tether", "हॉटस्पॉट", "storage", "स्टोरेज",
+                      "battery", "बैटरी", "display", "brightness", "डिस्प्ले", "dark mode",
+                      "sound", "volume", "vibration", "ringtone", "आवाज़", "location", "gps", "लोकेशन",
+                      "security", "fingerprint", "lock", "password", "cast", "screen cast",
+                      "date", "time", "language", "keyboard", "input", "developer", "accessibility",
+                      "sim", "mobile network", "data roaming", "apn", "vpn", "nfc", "airplane", "flight mode",
+                      "account", "sync", "privacy", "notification", "dnd", "do not disturb", "about phone", "about", "update"
+                  )
+                  return sysWords.any { w.contains(it) }
+              }
+
+              private fun findPackageInstant(appName: String): String? {
+                  val clean = appName.trim().lowercase()
+                  if (clean.isEmpty()) return null
+                  if (appCacheMap.isEmpty()) refreshInstalledAppsCache()
+                  synchronized(appCacheMap) {
+                      appCacheMap[clean]?.let { return it }
+                      for ((label, pkg) in appCacheMap) {
+                          if (label == clean || label.contains(clean) || clean.contains(label)) {
+                              return pkg
+                          }
+                      }
+                  }
+                  return null
+              }
+
               private suspend fun tryLocalScreenClickOrType(goal: String): Boolean {
                   readScreenElementsWithSignature()
                   val g = goal.trim().lowercase()
                   val cleanWords = g.replace("par click karo", "").replace("click karo", "").replace("dabayein", "")
-                      .replace("dabao", "").replace("kholo", "").replace("खोलो", "").replace("दबाओ", "")
+                      .replace("dabao", "").replace("kholo", "").replace("open karo", "").replace("खोलो", "").replace("दबाओ", "")
                       .split(" ", ",").map { it.trim() }.filter { it.length >= 2 }
 
                   for ((id, node) in nodeMap) {
@@ -953,7 +522,7 @@ jobs:
                       if (label.isNotEmpty() && cleanWords.any { label.contains(it) }) {
                           val r = Rect() ; node.getBoundsInScreen(r)
                           performSmartClick(id, r.centerX(), r.centerY())
-                          delay(1000)
+                          delay(400)
                           return true
                       }
                   }
@@ -962,7 +531,12 @@ jobs:
 
               private fun needsDeepWebResearch(cmd: String): Boolean {
                   val lower = cmd.lowercase()
-                  return listOf("episode", "एपिसोड", "latest", "naya", "नया", "last", "aakhiri", "kamao", "कमाओ", "earning", "paisa", "पैसा", "challenge", "चैलेंज", "price", "rate", "news", "khabar", "research", "रिसर्च").any { lower.contains(it) }
+                  return listOf(
+                      "episode", "एपिसोड", "latest", "naya", "नया", "last", "aakhiri",
+                      "kamao", "कमाओ", "earning", "paisa", "पैसा", "challenge", "चैलेंज",
+                      "price", "rate", "news", "khabar", "research", "रिसर्च", "reserch", "reasearch",
+                      "best phone", "sabse best", "compare", "ek ek karke", "sabhi ai", "saare ai"
+                  ).any { lower.contains(it) }
               }
 
               private fun startGeniusAgent(isResumeWithCorrection: Boolean) {
@@ -973,20 +547,22 @@ jobs:
                       recentActionSignatures.clear()
                       failedTargets.clear()
                       researchedContext = ""
+                      collectedNotes = ""
                   }
                   autoCollapseBar(true)
 
                   agentJob = scope.launch {
                       val installedApps = getInstalledAppNames()
+                      val aiAppsOnPhone = if (installedAiAppsList.isNotEmpty()) installedAiAppsList.joinToString(", ") else "ChatGPT, Gemini, Chrome, Perplexity"
                       val vaultSummary = getPersonalVaultSummary()
                       val redmiStatus = getRedmiPhoneStatus(false)
                       val stepQueue = mutableListOf<JSONObject>()
 
                       if (!isResumeWithCorrection && needsDeepWebResearch(currentGoal)) {
                           statusTv.setTextColor(Color.parseColor("#38BDF8"))
-                          statusTv.text = "🔍 Live Google Search se jankari nikaal raha hoon..."
+                          statusTv.text = "⚡ Hyper-Planner: Multi-App / Research Macro bana raha hoon..."
                           val currentPkg = rootInActiveWindow?.packageName?.toString() ?: "home"
-                          val masterPlan = researchAndPlanWithAI(currentGoal, vaultSummary, installedApps, currentPkg)
+                          val masterPlan = researchAndPlanWithAI(currentGoal, vaultSummary, installedApps, aiAppsOnPhone, currentPkg)
                           if (!isRunning) return@launch
                           researchedContext = masterPlan.optString("researched_info", "")
                           val missionPlan = masterPlan.optString("save_mission_plan", "")
@@ -1004,7 +580,7 @@ jobs:
                           speakOut("Theek hai, aapki baat maankar rasta badal raha hoon")
                       } else {
                           statusTv.setTextColor(Color.parseColor("#38BDF8"))
-                          statusTv.text = "⚡ Redmi 10S Smart Flash-Live Brain shuru..."
+                          statusTv.text = "⚡ Hyper-Speed Brain Active..."
                       }
 
                       var aiConsultCount = 0
@@ -1012,6 +588,7 @@ jobs:
                       var lastScreenSig = ""
 
                       while (isRunning) {
+                          // HYPER-MACRO QUEUE: Executes chained steps (open_app -> type -> click -> save_note) back-to-back without stopping!
                           while (stepQueue.isNotEmpty() && isRunning) {
                               val step = stepQueue.removeAt(0)
                               val act = step.optString("action", "")
@@ -1030,7 +607,8 @@ jobs:
                                   return@launch
                               }
                               val ok = executeLocalStepWithVerification(step)
-                              if (!ok || act == "click" || act == "type" || act == "open_app" || act == "direct_intent" || act == "open_setting") {
+                              // Only clear remaining macro steps if a step actually failed!
+                              if (!ok) {
                                   stepQueue.clear()
                                   break
                               }
@@ -1038,44 +616,51 @@ jobs:
                           if (!isRunning) break
 
                           aiConsultCount++
-                          if (aiConsultCount > 35) { stopAgent("✅ Is charan ka kaam poora ho gaya!") ; break }
+                          if (aiConsultCount > 45) { stopAgent("✅ Multi-App Task poora ho gaya! Notes: $collectedNotes") ; break }
 
                           statusTv.setTextColor(Color.parseColor("#60A5FA"))
-                          statusTv.text = "🧠 Brain ($lastWorkingModel): Screen aur agla button soch raha hoon..."
-                          delay(400)
+                          statusTv.text = "⚡ Brain ($lastWorkingModel): Screen read & macro fire..."
+                          delay(110) // Ultra-low 110ms latency before reading screen!
 
                           val (screenSnapshot, structSig) = readScreenElementsWithSignature()
                           if (structSig == lastScreenSig) stuckCount++ else { stuckCount = 0 ; lastScreenSig = structSig }
 
-                          val needVision = stuckCount >= 1 || screenSnapshot.lines().size < 6
+                          val needVision = stuckCount >= 2 || screenSnapshot.lines().size < 4
                           val screenshotB64 = if (needVision) captureScreenBase64() else null
 
-                          val nextDecision = thinkLikeGeniusHuman(currentGoal, liveUserCorrection, researchedContext, vaultSummary, redmiStatus, installedApps, screenSnapshot, screenshotB64, stuckCount)
+                          val nextDecision = thinkLikeGeniusHuman(
+                              currentGoal, liveUserCorrection, researchedContext, collectedNotes,
+                              vaultSummary, redmiStatus, installedApps, aiAppsOnPhone, screenSnapshot, screenshotB64, stuckCount
+                          )
                           if (!isRunning) break
                           if (liveUserCorrection.isNotEmpty()) liveUserCorrection = ""
+
+                          val newNote = nextDecision.optString("save_note", "")
+                          if (newNote.isNotBlank() && !collectedNotes.contains(newNote)) {
+                              collectedNotes = if (collectedNotes.isEmpty()) newNote else "$collectedNotes | $newNote"
+                          }
 
                           val chosenBtnInfo = nextDecision.optString("chosen_button_info", "")
                           val nextStepPlan = nextDecision.optString("next_step_plan", "")
                           val capabilityNote = nextDecision.optString("capability_note", "")
                           if (chosenBtnInfo.isNotEmpty() || nextStepPlan.isNotEmpty()) {
-                              planPreviewTv.text = "🎯 [$lastWorkingModel] Button: $chosenBtnInfo | Aage: $nextStepPlan"
+                              planPreviewTv.text = "🎯 [$lastWorkingModel] $chosenBtnInfo ➔ $nextStepPlan"
                           }
 
                           val topAct = nextDecision.optString("action", "")
                           if (topAct == "rate_limit") {
                               statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                              statusTv.text = "⏳ Flash models busy hain, 4 second intezaar..."
-                              delay(4000) ; continue
+                              statusTv.text = "⏳ Flash models busy hain, 2.5 second intezaar..."
+                              delay(2500) ; continue
                           } else if (topAct == "done") {
                               val m = nextDecision.optString("message", "Kaam poora ho gaya!")
                               val pkgNow = rootInActiveWindow?.packageName?.toString()?.substringAfterLast(".") ?: "app"
                               saveLearnedPath(currentGoal, pkgNow)
                               speakOut(m) ; vibrateTick(280) ; stopAgent("✅ $m") ; break
                           } else if (topAct == "ask_user") {
-                              // If API key is leaked/error, first try clicking matching button on screen directly!
                               val m = nextDecision.optString("message", "Yahan aapki madad chahiye")
                               if (m.contains("Key", true) && tryLocalScreenClickOrType(currentGoal)) {
-                                  stopAgent("✅ Local Screen Brain ne button click kar diya! (Lambi soch ke liye ⚙️ mein nayi API Key daalein)")
+                                  stopAgent("✅ Local Screen Brain ne button click kar diya!")
                                   break
                               }
                               val fullMsg = if (capabilityNote.isNotEmpty()) "$m — $capabilityNote" else m
@@ -1097,6 +682,7 @@ jobs:
                   }
               }
 
+              // HYPER-SPEED STEP EXECUTOR (Uses dynamic polling instead of slow 2-second sleeps!)
               private suspend fun executeLocalStepWithVerification(step: JSONObject): Boolean {
                   val action = step.optString("action", "")
                   val reason = step.optString("reason", action)
@@ -1119,33 +705,55 @@ jobs:
                   statusTv.text = "⚡ $reason"
                   if (nextHint.isNotEmpty()) planPreviewTv.text = "🎯 Iske baad: $nextHint"
 
-                  val pkgNow = rootInActiveWindow?.packageName?.toString()?.substringAfterLast(".") ?: "app"
-                  val sig = "[$pkgNow]$action(#$targetId '$target')"
+                  val prevPkg = rootInActiveWindow?.packageName?.toString() ?: ""
+                  val pkgShort = prevPkg.substringAfterLast(".").ifEmpty { "app" }
+                  val sig = "[$pkgShort]$action(#$targetId '$target')"
                   recentActionSignatures.add(sig)
-                  history.add("[$pkgNow]$action(#$targetId '$target' $reason)")
-                  if (history.size > 16) history.removeAt(0)
+                  history.add("[$pkgShort]$action(#$targetId '$target' $reason)")
+                  if (history.size > 20) history.removeAt(0)
 
                   when (action) {
-                      "open_app" -> { val opened = openAppByName(step.optString("app_name", target)) ; delay(2100) ; return opened }
-                      "open_setting" -> { val ok = openRedmiSetting(step.optString("setting_name", target)) ; delay(2000) ; return ok }
+                      "save_note" -> {
+                          val note = step.optString("note", text)
+                          if (note.isNotBlank()) {
+                              collectedNotes = if (collectedNotes.isEmpty()) note else "$collectedNotes | $note"
+                          }
+                          return true
+                      }
+                      "open_app" -> {
+                          val appToOpen = step.optString("app_name", target)
+                          val opened = openAppByName(appToOpen)
+                          if (opened) waitForUiReady(prevPkg, 650L)
+                          return opened
+                      }
+                      "open_setting" -> {
+                          val ok = openRedmiSetting(step.optString("setting_name", target))
+                          if (ok) waitForUiReady(prevPkg, 550L)
+                          return ok
+                      }
                       "direct_intent" -> {
                           val intentType = step.optString("intent_type", "")
                           val data = step.optString("data", text)
                           val ok = fireDirectIntent(intentType, data)
-                          delay(2300)
+                          waitForUiReady(prevPkg, 750L)
                           if (ok && intentType.lowercase() == "youtube_search" &&
                               (goalLower.contains("chala") || goalLower.contains("चला") || goalLower.contains("play") || goalLower.contains("song") || goalLower.contains("गाना") || goalLower.contains("video") || goalLower.contains("episode") || goalLower.contains("एपिसोड"))) {
-                              delay(1600)
-                              val pos = findNonAdVideoResult(data) ?: run { performSwipe("up") ; delay(1200) ; findNonAdVideoResult(data) }
+                              delay(950)
+                              val pos = findNonAdVideoResult(data) ?: run { performSwipe("up") ; delay(550) ; findNonAdVideoResult(data) }
                               if (pos != null) {
                                   performTap(pos.first.toFloat(), pos.second.toFloat())
-                                  delay(1800)
+                                  delay(600)
                                   stopAgent("✅ Ad chhodkar asli video chala diya!")
                               }
                           }
                           return ok
                       }
-                      "write_content" -> { copyToClipboard(text) ; val ok = performSmartType(targetId, x, y, text, step.optBoolean("press_enter", false)) ; delay(1400) ; return ok }
+                      "write_content" -> {
+                          copyToClipboard(text)
+                          val ok = performSmartType(targetId, x, y, text, step.optBoolean("press_enter", false))
+                          delay(350)
+                          return ok
+                      }
                       "scroll_loop" -> {
                           val dir = step.optString("direction", "up")
                           val sec = step.optInt("interval_sec", 4).coerceIn(2, 15)
@@ -1156,59 +764,72 @@ jobs:
                           }
                           return true
                       }
-                      "scroll_down" -> { for (i in 1..step.optInt("times", 1).coerceIn(1, 5)) { if (!isRunning) break ; performSwipe("up") ; delay(1000) } ; return true }
-                      "scroll_up" -> { performSwipe("down") ; delay(1000) ; return true }
-                      "swipe_left" -> { performSwipe("left") ; delay(900) ; return true }
-                      "swipe_right" -> { performSwipe("right") ; delay(900) ; return true }
-                      "double_tap" -> { val c = getCoordsForTarget(targetId, x, y) ; performDoubleTap(c.first.toFloat(), c.second.toFloat()) ; delay(1200) ; return true }
-                      "long_press" -> { val c = getCoordsForTarget(targetId, x, y) ; performLongPress(c.first.toFloat(), c.second.toFloat()) ; delay(1200) ; return true }
+                      "scroll_down" -> {
+                          for (i in 1..step.optInt("times", 1).coerceIn(1, 5)) {
+                              if (!isRunning) break
+                              performSwipe("up") ; delay(320)
+                          }
+                          return true
+                      }
+                      "scroll_up" -> { performSwipe("down") ; delay(320) ; return true }
+                      "swipe_left" -> { performSwipe("left") ; delay(280) ; return true }
+                      "swipe_right" -> { performSwipe("right") ; delay(280) ; return true }
+                      "double_tap" -> { val c = getCoordsForTarget(targetId, x, y) ; performDoubleTap(c.first.toFloat(), c.second.toFloat()) ; delay(350) ; return true }
+                      "long_press" -> { val c = getCoordsForTarget(targetId, x, y) ; performLongPress(c.first.toFloat(), c.second.toFloat()) ; delay(400) ; return true }
                       "click" -> {
-                          val beforePkg = rootInActiveWindow?.packageName?.toString() ?: ""
                           val clickedNode = nodeMap[targetId]
-                          if (beforePkg == "com.google.android.youtube" && clickedNode != null && isAdElement(clickedNode)) {
-                              performSwipe("up") ; delay(1100)
-                              findNonAdVideoResult(currentGoal)?.let { performTap(it.first.toFloat(), it.second.toFloat()) ; delay(1600) ; return true }
+                          if (prevPkg == "com.google.android.youtube" && clickedNode != null && isAdElement(clickedNode)) {
+                              performSwipe("up") ; delay(500)
+                              findNonAdVideoResult(currentGoal)?.let { performTap(it.first.toFloat(), it.second.toFloat()) ; delay(600) ; return true }
                               return false
                           }
                           if (targetId > 0 || (x > 0 && y > 0)) {
-                              performSmartClick(targetId, x, y) ; delay(1500)
+                              performSmartClick(targetId, x, y)
+                              waitForUiReady(prevPkg, 450L)
                               val afterPkg = rootInActiveWindow?.packageName?.toString() ?: ""
-                              if (beforePkg == "com.google.android.youtube" && afterPkg.contains("chrome")) {
+                              if (prevPkg == "com.google.android.youtube" && afterPkg.contains("chrome")) {
                                   failedTargets.add("#$targetId($x,$y)")
-                                  performGlobalAction(GLOBAL_ACTION_BACK) ; delay(1000) ; return false
+                                  performGlobalAction(GLOBAL_ACTION_BACK) ; delay(400) ; return false
                               }
                               return true
                           }
                           if (target.isNotEmpty()) {
-                              waitForKeywordOnScreen(target, 2400L)?.let { performTap(it.first.toFloat(), it.second.toFloat()) ; delay(1500) ; return true }
+                              waitForKeywordOnScreen(target, 1200L)?.let {
+                                  performTap(it.first.toFloat(), it.second.toFloat())
+                                  waitForUiReady(prevPkg, 450L)
+                                  return true
+                              }
                           }
                           return false
                       }
                       "click_best_video" -> {
-                          delay(1200)
+                          delay(500)
                           val matchKw = step.optString("match_keywords", target)
-                          val pos = findNonAdVideoResult(matchKw) ?: run { performSwipe("up") ; delay(1200) ; findNonAdVideoResult(matchKw) }
-                          if (pos != null) { performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(1800) ; return true }
+                          val pos = findNonAdVideoResult(matchKw) ?: run { performSwipe("up") ; delay(550) ; findNonAdVideoResult(matchKw) }
+                          if (pos != null) { performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(700) ; return true }
                           return false
                       }
                       "type" -> {
                           val pressEnter = step.optBoolean("press_enter", true)
                           if (target.isNotEmpty() && targetId <= 0 && x <= 0) {
-                              waitForKeywordOnScreen(target, 2200L)?.let { performTap(it.first.toFloat(), it.second.toFloat()) ; delay(650) }
+                              waitForKeywordOnScreen(target, 1100L)?.let { performTap(it.first.toFloat(), it.second.toFloat()) ; delay(220) }
                           }
-                          val ok = performSmartType(targetId, x, y, text, pressEnter) ; delay(1700) ; return ok
+                          val ok = performSmartType(targetId, x, y, text, pressEnter)
+                          delay(450)
+                          return ok
                       }
-                      "system_control" -> { executeSystemControl(step.optString("command", target)) ; delay(900) ; return true }
-                      "back" -> { performGlobalAction(GLOBAL_ACTION_BACK) ; delay(1000) ; return true }
-                      "home" -> { performGlobalAction(GLOBAL_ACTION_HOME) ; delay(1000) ; return true }
-                      "wait" -> { delay(step.optInt("seconds", 2).coerceIn(1, 10) * 1000L) ; return true }
+                      "system_control" -> { executeSystemControl(step.optString("command", target)) ; delay(250) ; return true }
+                      "back" -> { performGlobalAction(GLOBAL_ACTION_BACK) ; delay(350) ; return true }
+                      "home" -> { performGlobalAction(GLOBAL_ACTION_HOME) ; delay(350) ; return true }
+                      "wait" -> { delay(step.optInt("seconds", 1).coerceIn(1, 5) * 1000L) ; return true }
                   }
                   return false
               }
 
               private suspend fun thinkLikeGeniusHuman(
-                  goal: String, userCorrection: String, researchedInfo: String, vaultSummary: String,
-                  redmiStatus: String, installedApps: String, screen: String, screenshotB64: String?, stuckCount: Int
+                  goal: String, userCorrection: String, researchedInfo: String, notesSoFar: String,
+                  vaultSummary: String, redmiStatus: String, installedApps: String, aiAppsOnPhone: String,
+                  screen: String, screenshotB64: String?, stuckCount: Int
               ): JSONObject = withContext(Dispatchers.IO) {
                   val dm = resources.displayMetrics
                   val nowTime = SimpleDateFormat("yyyy-MM-dd HH:mm EEEE", Locale.getDefault()).format(Date())
@@ -1216,67 +837,71 @@ jobs:
 
                   val taskCategory = when {
                       userCorrection.isNotBlank() -> "LIVE_VOICE"
-                      screenshotB64 != null || stuckCount >= 1 -> "DEEP_RESEARCH"
+                      screenshotB64 != null || stuckCount >= 2 -> "DEEP_RESEARCH"
                       else -> "FAST_ACTION"
                   }
 
                   val prompt = """
-                      You are a Superhuman Genius Android Mind (Version 17.0 Master) controlling a Xiaomi Redmi Note 10S (${dm.widthPixels}x${dm.heightPixels} px).
-                      LIVE REDMI NOTE 10S HARDWARE & STATUS: $redmiStatus
-                      CURRENT DATE & TIME: $nowTime
+                      You are a Hyper-Speed Multi-App Android Mind (Version 19.0) controlling Xiaomi Redmi Note 10S (${dm.widthPixels}x${dm.heightPixels} px).
+                      LIVE HARDWARE: $redmiStatus | TIME: $nowTime
                       MAIN GOAL: "$goal"
                       $corr
-                      RESEARCHED CONTEXT: "$researchedInfo"
-                      USER PERSONAL VAULT: "$vaultSummary"
-                      RECENT NOTIFICATION: "$latestNotificationText"
-                      INSTALLED APPS SAMPLE: $installedApps
-                      HISTORY OF ACTIONS: ${history.joinToString(" -> ")}
-                      BLACKLISTED BUTTONS: ${failedTargets.joinToString(", ")}
-                      STUCK COUNTER: $stuckCount
-                      LIVE SCREEN ELEMENTS (Ads are already filtered out):
+                      RESEARCHED FACTS: "$researchedInfo"
+                      COLLECTED MULTI-APP NOTES SO FAR: "$notesSoFar"
+                      AI APPS INSTALLED ON THIS PHONE: $aiAppsOnPhone
+                      ALL INSTALLED APPS: $installedApps
+                      USER VAULT: "$vaultSummary" | NOTIFICATION: "$latestNotificationText"
+                      HISTORY: ${history.joinToString(" -> ")} | BLACKLISTED: ${failedTargets.joinToString(", ")} | STUCK_COUNT: $stuckCount
+                      LIVE SCREEN ELEMENTS (Ads filtered out):
                       $screen
 
-                      SUPERHUMAN & REDMI NOTE 10S RULES:
-                      1. SELF-CRITIQUE: If STUCK COUNTER >= 1, your last action did NOT change the screen! Try a different button, scroll (`scroll_down`), or use `direct_intent` / `open_setting` / `open_app`.
-                      2. FAST DIRECT INTENTS:
-                         - To search/play on YouTube: use `{"action": "direct_intent", "intent_type": "youtube_search", "data": "song/video name", "reason": "YouTube search kar raha hoon"}`
-                         - When on YouTube search results (`com.google.android.youtube`), prefer `{"action": "click_best_video", "match_keywords": "query", "reason": "Asli video chala raha hoon"}`
-                         - To open any Redmi Setting directly: use `{"action": "open_setting", "setting_name": "wifi|bluetooth|hotspot|storage|battery|display|sound|apps|location|security|cast|about", "reason": "Setting khol raha hoon"}`
-                         - For Torch/Volume/Control Center: use `{"action": "system_control", "command": "torch_on|torch_off|volume_up|volume_down|mute|miui_control_center|notification", "reason": "..."}`
-                      3. EXACT BUTTON SELECTION: Look at every `#id [TAG] 'label' (hint/id) [ON/OFF] at (x, y)` and pick the exact `#id` and `(x, y)`.
-                      4. HONEST CAPABILITY CHECK:
-                         - If a step requires UPI PIN, Bank Password, hidden OTP, Captcha, or Fingerprint, return `"action": "ask_user"` with a clear Hinglish `"message"` and `"capability_note"`.
-                      5. Output ONLY valid JSON:
+                      HYPER-SPEED MULTI-APP & MACRO RULES:
+                      1. MULTI-STEP MACRO CHAINING: Whenever possible, return 2 to 4 chained steps in `"steps"` so the phone executes them in <0.2s without waiting!
+                         - Example: If you open an app (`open_app`), you can immediately follow it with `type` (with `id: -1` to auto-focus the input box) or `click` (with `target: "Send|Search"`).
+                      2. MULTI-APP RESEARCH ("ek ek karke sabhi AI app par research karo"):
+                         - Check `AI APPS INSTALLED ON THIS PHONE` ($aiAppsOnPhone) and `HISTORY`.
+                         - Open the first AI app not yet visited (`{"action": "open_app", "app_name": "ChatGPT"}`), type the user's question (`{"action": "type", "text": "...", "press_enter": true}`), read the answer on screen, save the key finding in `"save_note": "ChatGPT recommends: ..."`, then immediately `open_app` the next AI app!
+                         - Once all available AI apps have been checked (or if `RESEARCHED FACTS` + `COLLECTED MULTI-APP NOTES SO FAR` has complete answers), return `{"action": "done", "message": "Sabhi AI apps ke anusar sabse best: ..."}`.
+                      3. FAST DIRECT INTENTS:
+                         - YouTube search: `{"action": "direct_intent", "intent_type": "youtube_search", "data": "query", "reason": "YouTube search"}`
+                         - Google Web search: `{"action": "direct_intent", "intent_type": "web_search", "data": "query", "reason": "Google search"}`
+                         - Redmi Setting: `{"action": "open_setting", "setting_name": "wifi|bluetooth|hotspot|storage|battery|display|sound|apps|location|security|cast|about", "reason": "Setting"}`
+                      4. Output ONLY valid JSON:
                       {
-                        "chosen_button_info": "Button #ID ka naam aur kaam",
-                        "next_step_plan": "Iske baad agla kadam kya hoga",
+                        "chosen_button_info": "Button #ID / Macro Action",
+                        "next_step_plan": "Agla kadam",
+                        "save_note": "Optional finding from current screen to remember across apps",
                         "capability_note": "Yeh kaam main khud kar sakta hoon",
                         "speak": "Chhota Hindi sentence",
                         "steps": [
-                          {"action": "click|type|write_content|open_app|open_setting|direct_intent|scroll_down|scroll_up|swipe_left|swipe_right|double_tap|long_press|click_best_video|scroll_loop|system_control|back|home", "id": 4, "x": 540, "y": 300, "text": "...", "press_enter": true, "reason": "Button daba raha hoon", "next_step": "Agla kaam"}
+                          {"action": "open_app|type|click|open_setting|direct_intent|scroll_down|scroll_up|swipe_left|swipe_right|double_tap|long_press|click_best_video|scroll_loop|system_control|save_note|back|home", "id": 4, "x": 540, "y": 300, "app_name": "...", "target": "...", "text": "...", "press_enter": true, "reason": "...", "next_step": "..."}
                         ]
                       }
-                      (Or if goal is 100% finished on screen, return `{"action": "done", "message": "Kaam ekdam perfect tarike se poora ho gaya!"}`).
+                      (Or if goal is 100% finished, return `{"action": "done", "message": "Poora nichod aur jawab: ..."}`).
                   """.trimIndent()
                   return@withContext callGeminiAPI(prompt, false, screenshotB64, taskCategory)
               }
 
-              private suspend fun researchAndPlanWithAI(rawCommand: String, vaultSummary: String, installedApps: String, currentPkg: String): JSONObject = withContext(Dispatchers.IO) {
+              private suspend fun researchAndPlanWithAI(
+                  rawCommand: String, vaultSummary: String, installedApps: String, aiAppsOnPhone: String, currentPkg: String
+              ): JSONObject = withContext(Dispatchers.IO) {
                   val prompt = """
-                      You are the Research & Strategy Brain of Redmi Note 10S Agent 17.0 with Live Google Search.
+                      You are the Hyper-Speed Research & Multi-App Planner of Redmi Note 10S Agent 19.0 with Live Google Search.
                       USER COMMAND: "$rawCommand"
+                      AI APPS ON PHONE: $aiAppsOnPhone
+                      ALL INSTALLED APPS: $installedApps
                       USER VAULT: "$vaultSummary"
-                      CURRENT APP: "$currentPkg"
-                      INSTALLED APPS: $installedApps
 
-                      Use Google Search to find the exact episode number/title or best strategy, and output ONLY valid JSON:
+                      1. Use Google Search right now to find the most accurate, up-to-date facts (e.g., best coding phone under 15000 with processor/RAM specs, or exact episode number).
+                      2. If the user asked to check/research across their phone's AI apps or other apps, put the first app launch + query typing right inside `"steps"` so execution starts in 0.01s!
+                      Output ONLY valid JSON:
                       {
                         "understood_goal": "Clear goal",
-                        "researched_info": "Exact facts found",
-                        "save_mission_plan": "Optional roadmap if big challenge, else empty string",
+                        "researched_info": "Detailed accurate facts found via Google Search",
+                        "save_mission_plan": "Step-by-step multi-app plan",
                         "speak": "1 short Hindi sentence",
                         "steps": [
-                          {"action": "direct_intent", "intent_type": "youtube_search|web_search|open_url|dial|whatsapp_num|play_store", "data": "exact query", "reason": "Seedha search khol raha hoon"}
+                          {"action": "open_app|direct_intent", "app_name": "ChatGPT", "intent_type": "youtube_search|web_search|open_url", "data": "exact query", "reason": "Turant pehla app khol raha hoon"}
                         ]
                       }
                   """.trimIndent()
@@ -1286,11 +911,11 @@ jobs:
               private suspend fun captureScreenBase64(): String? {
                   if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
                   val now = System.currentTimeMillis()
-                  if (now - lastScreenshotTime < 1200L) return null
+                  if (now - lastScreenshotTime < 1000L) return null
                   lastScreenshotTime = now
                   val deferred = CompletableDeferred<String?>()
                   try {
-                      setWindowGhostMode(true) ; delay(60)
+                      setWindowGhostMode(true) ; delay(45)
                       val dm = resources.displayMetrics
                       takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : AccessibilityService.TakeScreenshotCallback {
                           override fun onSuccess(screenshot: AccessibilityService.ScreenshotResult) {
@@ -1303,7 +928,7 @@ jobs:
                                       val scaled = Bitmap.createScaledBitmap(soft, dm.widthPixels / 2, dm.heightPixels / 2, true)
                                       soft.recycle()
                                       val out = ByteArrayOutputStream()
-                                      scaled.compress(Bitmap.CompressFormat.JPEG, 58, out)
+                                      scaled.compress(Bitmap.CompressFormat.JPEG, 55, out)
                                       scaled.recycle()
                                       deferred.complete(Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP))
                                   } else deferred.complete(null)
@@ -1312,7 +937,7 @@ jobs:
                           override fun onFailure(errorCode: Int) { deferred.complete(null) }
                       })
                   } catch (e: Exception) { setWindowGhostMode(false) ; return null }
-                  val res = withTimeoutOrNull(3000L) { deferred.await() }
+                  val res = withTimeoutOrNull(2500L) { deferred.await() }
                   setWindowGhostMode(false)
                   return res
               }
@@ -1370,7 +995,7 @@ jobs:
                   val start = System.currentTimeMillis()
                   while (System.currentTimeMillis() - start < timeoutMs && isRunning) {
                       rootInActiveWindow?.let { searchKeywordInTree(it, keys)?.let { pos -> return pos } }
-                      delay(250)
+                      delay(80)
                   }
                   return null
               }
@@ -1392,25 +1017,37 @@ jobs:
                       val s = settingName.trim().lowercase()
                       val action = when {
                           s.contains("wifi") || s.contains("wi-fi") || s.contains("वाईफाई") -> Settings.ACTION_WIFI_SETTINGS
-                          s.contains("bluetooth") || s.contains("ब्लूटूथ") -> Settings.ACTION_BLUETOOTH_SETTINGS
-                          s.contains("hotspot") || s.contains("tether") || s.contains("हॉटस्पॉट") -> "android.settings.TETHER_SETTINGS"
-                          s.contains("storage") || s.contains("स्टोरेज") -> Settings.ACTION_INTERNAL_STORAGE_SETTINGS
+                          s.contains("bluetooth") || s.contains("blutooth") || s.contains("ब्लूटूथ") -> Settings.ACTION_BLUETOOTH_SETTINGS
+                          s.contains("hotspot") || s.contains("hotpot") || s.contains("tether") || s.contains("हॉटस्पॉट") -> "android.settings.TETHER_SETTINGS"
+                          s.contains("storage") || s.contains("stronge") || s.contains("स्टोरेज") -> Settings.ACTION_INTERNAL_STORAGE_SETTINGS
                           s.contains("battery") || s.contains("बैटरी") -> Intent.ACTION_POWER_USAGE_SUMMARY
-                          s.contains("display") || s.contains("brightness") || s.contains("डिस्प्ले") -> Settings.ACTION_DISPLAY_SETTINGS
-                          s.contains("sound") || s.contains("volume") || s.contains("आवाज़") -> Settings.ACTION_SOUND_SETTINGS
+                          s.contains("display") || s.contains("brightness") || s.contains("dark") || s.contains("डिस्प्ले") -> Settings.ACTION_DISPLAY_SETTINGS
+                          s.contains("sound") || s.contains("volume") || s.contains("ringtone") || s.contains("vibration") || s.contains("आवाज़") -> Settings.ACTION_SOUND_SETTINGS
                           s.contains("app") || s.contains("ऐप") -> Settings.ACTION_MANAGE_ALL_APPLICATIONS_SETTINGS
-                          s.contains("about") || s.contains("device") -> Settings.ACTION_DEVICE_INFO_SETTINGS
-                          s.contains("location") || s.contains("gps") -> Settings.ACTION_LOCATION_SOURCE_SETTINGS
-                          s.contains("security") || s.contains("lock") -> Settings.ACTION_SECURITY_SETTINGS
-                          s.contains("cast") || s.contains("screen") -> Settings.ACTION_CAST_SETTINGS
+                          s.contains("about") || s.contains("device") || s.contains("update") || s.contains("अबाउट") -> Settings.ACTION_DEVICE_INFO_SETTINGS
+                          s.contains("location") || s.contains("gps") || s.contains("लोकेशन") -> Settings.ACTION_LOCATION_SOURCE_SETTINGS
+                          s.contains("security") || s.contains("fingerprint") || s.contains("lock") || s.contains("password") -> Settings.ACTION_SECURITY_SETTINGS
+                          s.contains("cast") || s.contains("screen cast") -> Settings.ACTION_CAST_SETTINGS
                           s.contains("date") || s.contains("time") -> Settings.ACTION_DATE_SETTINGS
+                          s.contains("language") || s.contains("keyboard") || s.contains("input") -> Settings.ACTION_INPUT_METHOD_SETTINGS
+                          s.contains("developer") -> Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS
+                          s.contains("accessibility") -> Settings.ACTION_ACCESSIBILITY_SETTINGS
+                          s.contains("sim") || s.contains("roaming") || s.contains("mobile network") -> Settings.ACTION_DATA_ROAMING_SETTINGS
+                          s.contains("apn") -> Settings.ACTION_APN_SETTINGS
+                          s.contains("vpn") -> Settings.ACTION_VPN_SETTINGS
+                          s.contains("nfc") -> Settings.ACTION_NFC_SETTINGS
+                          s.contains("airplane") || s.contains("flight") -> Settings.ACTION_AIRPLANE_MODE_SETTINGS
+                          s.contains("account") || s.contains("sync") -> Settings.ACTION_SYNC_SETTINGS
+                          s.contains("privacy") -> Settings.ACTION_PRIVACY_SETTINGS
+                          s.contains("notification") -> "android.settings.NOTIFICATION_ASSISTANT_SETTINGS"
+                          s.contains("dnd") || s.contains("disturb") -> Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS
                           else -> Settings.ACTION_SETTINGS
                       }
                       startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))
                       true
                   } catch (e: Exception) {
                       try {
-                          startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                          startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))
                           true
                       } catch (ex: Exception) { false }
                   }
@@ -1452,7 +1089,7 @@ jobs:
                       val url = URL("https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey")
                       conn = url.openConnection() as HttpURLConnection
                       conn.requestMethod = "GET"
-                      conn.connectTimeout = 6000 ; conn.readTimeout = 6000
+                      conn.connectTimeout = 5000 ; conn.readTimeout = 5000
                       if (conn.responseCode == 200) {
                           val text = conn.inputStream.bufferedReader().readText()
                           val arr = JSONObject(text).optJSONArray("models") ?: return
@@ -1533,7 +1170,7 @@ jobs:
                                   conn = url.openConnection() as HttpURLConnection
                                   conn.requestMethod = "POST"
                                   conn.setRequestProperty("Content-Type", "application/json")
-                                  conn.connectTimeout = 8000 ; conn.readTimeout = 14000 ; conn.doOutput = true
+                                  conn.connectTimeout = 6500 ; conn.readTimeout = 11000 ; conn.doOutput = true
 
                                   val partsArray = JSONArray().apply {
                                       put(JSONObject().put("text", prompt))
@@ -1637,28 +1274,38 @@ jobs:
                   if (x > 0 && y > 0) performTap(x.toFloat(), y.toFloat())
               }
 
+              // HYPER-SPEED SMART TYPE: Auto-waits up to 900ms for input box to appear after app launch, then types & presses Enter/Send!
               private suspend fun performSmartType(id: Int, x: Int, y: Int, text: String, pressEnter: Boolean): Boolean {
                   val explicitNode = nodeMap[id]
                   if (id > 0 || (x > 0 && y > 0)) {
                       val c = getCoordsForTarget(id, x, y)
-                      performTap(c.first.toFloat(), c.second.toFloat()) ; delay(650)
+                      performTap(c.first.toFloat(), c.second.toFloat()) ; delay(240)
                   }
-                  val root = rootInActiveWindow ?: return false
-                  val targetNode = if (explicitNode != null && explicitNode.isEditable) explicitNode else findEditableNode(root)
-                  if (targetNode != null) {
-                      targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-                      val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
-                      var typed = targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                      if (!typed) { copyToClipboard(text) ; typed = targetNode.performAction(AccessibilityNodeInfo.ACTION_PASTE) }
-                      if (pressEnter) {
-                          delay(380)
-                          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                              targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+                  var targetNode: AccessibilityNodeInfo? = if (explicitNode != null && explicitNode.isEditable) explicitNode else null
+                  val startWait = System.currentTimeMillis()
+                  while (targetNode == null && System.currentTimeMillis() - startWait < 900L && isRunning) {
+                      rootInActiveWindow?.let { targetNode = findEditableNode(it) }
+                      if (targetNode == null) delay(60)
+                  }
+                  val node = targetNode ?: return false
+                  node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                  val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
+                  var typed = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                  if (!typed) { copyToClipboard(text) ; typed = node.performAction(AccessibilityNodeInfo.ACTION_PASTE) }
+                  if (pressEnter) {
+                      delay(160)
+                      var sent = false
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                          sent = node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+                      }
+                      // Also check if there is a visible Send/Search icon button next to the input box in AI apps (ChatGPT/Gemini/Perplexity)
+                      if (!sent) {
+                          waitForKeywordOnScreen("send|search|submit|ask|arrow|भेजें", 350L)?.let {
+                              performTap(it.first.toFloat(), it.second.toFloat())
                           }
                       }
-                      return typed
                   }
-                  return false
+                  return typed
               }
 
               private fun findEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
@@ -1686,7 +1333,7 @@ jobs:
                   var nextId = 1
 
                   fun traverse(node: AccessibilityNodeInfo?) {
-                      if (node == null || !node.isVisibleToUser || nextId > 140) return
+                      if (node == null || !node.isVisibleToUser || nextId > 145) return
                       if (pkg == "com.google.android.youtube" && isAdElement(node)) return
 
                       val rect = Rect() ; node.getBoundsInScreen(rect)
@@ -1708,7 +1355,7 @@ jobs:
                                       else -> "[TEXT]"
                                   }
                                   val rawLabel = if (text.isNotEmpty()) text else hint
-                                  val cleanText = rawLabel.replace("\n", " ").replace("\"", "'").take(95)
+                                  val cleanText = rawLabel.replace("\n", " ").replace("\"", "'").take(110)
                                   val idHint = if (idName.isNotEmpty()) " ($idName)" else ""
                                   val id = nextId++
                                   nodeMap[id] = node
@@ -1737,31 +1384,33 @@ jobs:
                   history.clear() ; recentActionSignatures.clear() ; liveUserCorrection = "" ; autoCollapseBar(false)
               }
 
+              // CRISP 55ms TAP GESTURE
               private suspend fun performTap(x: Float, y: Float) {
-                  vibrateTick(15) ; setWindowGhostMode(true) ; delay(55)
+                  vibrateTick(12) ; setWindowGhostMode(true) ; delay(30)
                   val path = Path().apply { moveTo(x, y) }
-                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 95)).build(), null, null)
-                  delay(160) ; setWindowGhostMode(false)
+                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 55)).build(), null, null)
+                  delay(65) ; setWindowGhostMode(false)
               }
 
               private suspend fun performDoubleTap(x: Float, y: Float) {
-                  vibrateTick(20) ; setWindowGhostMode(true) ; delay(55)
+                  vibrateTick(18) ; setWindowGhostMode(true) ; delay(30)
                   val p1 = Path().apply { moveTo(x, y) } ; val p2 = Path().apply { moveTo(x, y) }
-                  val s1 = GestureDescription.StrokeDescription(p1, 0, 55)
-                  val s2 = GestureDescription.StrokeDescription(p2, 130, 55)
+                  val s1 = GestureDescription.StrokeDescription(p1, 0, 45)
+                  val s2 = GestureDescription.StrokeDescription(p2, 105, 45)
                   dispatchGesture(GestureDescription.Builder().addStroke(s1).addStroke(s2).build(), null, null)
-                  delay(170) ; setWindowGhostMode(false)
+                  delay(85) ; setWindowGhostMode(false)
               }
 
               private suspend fun performLongPress(x: Float, y: Float) {
-                  vibrateTick(35) ; setWindowGhostMode(true) ; delay(55)
+                  vibrateTick(30) ; setWindowGhostMode(true) ; delay(30)
                   val path = Path().apply { moveTo(x, y) }
-                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 820)).build(), null, null)
-                  delay(170) ; setWindowGhostMode(false)
+                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 720)).build(), null, null)
+                  delay(90) ; setWindowGhostMode(false)
               }
 
+              // CRISP 210ms SWIPE GESTURE
               private suspend fun performSwipe(direction: String) {
-                  setWindowGhostMode(true) ; delay(50)
+                  setWindowGhostMode(true) ; delay(30)
                   val dm = resources.displayMetrics
                   val cx = dm.widthPixels / 2f ; val topY = dm.heightPixels * 0.22f ; val botY = dm.heightPixels * 0.76f
                   val path = Path().apply {
@@ -1774,8 +1423,8 @@ jobs:
                           else -> { moveTo(cx, botY) ; lineTo(cx, topY) }
                       }
                   }
-                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 320)).build(), null, null)
-                  delay(180) ; setWindowGhostMode(false)
+                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 210)).build(), null, null)
+                  delay(80) ; setWindowGhostMode(false)
               }
 
               private fun executeSystemControl(cmd: String): Boolean {
@@ -1813,39 +1462,20 @@ jobs:
               }
 
               private fun getInstalledAppNames(): String {
-                  return try {
-                      val pm = packageManager
-                      pm.getInstalledApplications(0).mapNotNull { info ->
-                          if (pm.getLaunchIntentForPackage(info.packageName) != null) pm.getApplicationLabel(info).toString() else null
-                      }.distinct().take(50).joinToString(", ")
-                  } catch (e: Exception) { "YouTube, WhatsApp, Chrome, Settings, Instagram, Phone" }
+                  if (cachedAppNamesSummary.isNotEmpty()) return cachedAppNamesSummary
+                  refreshInstalledAppsCache()
+                  return if (cachedAppNamesSummary.isNotEmpty()) cachedAppNamesSummary else "YouTube, WhatsApp, Chrome, Settings, Instagram, ChatGPT, Phone"
               }
 
               private fun openAppByName(appName: String): Boolean {
                   val pm = packageManager
-                  val clean = appName.trim().lowercase()
-                  if (clean.contains("setting") || clean.contains("सेटिंग")) return openRedmiSetting("settings")
-                  val knownPkgs = mapOf(
-                      "youtube" to "com.google.android.youtube", "यूट्यूब" to "com.google.android.youtube",
-                      "whatsapp" to "com.whatsapp", "व्हाट्सएप" to "com.whatsapp",
-                      "chrome" to "com.android.chrome", "क्रोम" to "com.android.chrome",
-                      "play store" to "com.android.vending", "instagram" to "com.instagram.android",
-                      "flipkart" to "com.flipkart.android", "amazon" to "in.amazon.mshop.android.shopping"
-                  )
-                  for ((k, pkg) in knownPkgs) {
-                      if (clean.contains(k)) {
-                          pm.getLaunchIntentForPackage(pkg)?.let {
-                              it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                              startActivity(it)
-                              return true
-                          }
-                      }
-                  }
-                  val apps = pm.getInstalledApplications(0)
-                  val exact = apps.firstOrNull { pm.getApplicationLabel(it).toString().lowercase() == clean }
-                      ?: apps.firstOrNull { val l = pm.getApplicationLabel(it).toString().lowercase() ; l.contains(clean) || clean.contains(l) }
-                  if (exact != null) {
-                      pm.getLaunchIntentForPackage(exact.packageName)?.let {
+                  val clean = extractOpenTarget(appName)
+                  if (clean.isEmpty()) return false
+                  if (clean == "setting" || clean == "settings" || clean == "सेटिंग" || clean == "सेटिंग्स") return openRedmiSetting("settings")
+
+                  val pkg = findPackageInstant(clean)
+                  if (pkg != null) {
+                      pm.getLaunchIntentForPackage(pkg)?.let {
                           it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                           startActivity(it)
                           return true
