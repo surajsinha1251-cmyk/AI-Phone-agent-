@@ -31,7 +31,7 @@ jobs:
           EOF
 
           cat << 'EOF' > settings.gradle
-          rootProject.name = "AIPhoneAgent"
+          rootProject.name = "YantraAI"
           include ':app'
           EOF
 
@@ -58,8 +58,8 @@ jobs:
                   applicationId "com.ai.phoneagent"
                   minSdk 26
                   targetSdk 34
-                  versionCode 27
-                  versionName "19.0-HYPER-MULTI-TASK"
+                  versionCode 29
+                  versionName "21.0-YANTRA-SMOOTH"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -84,13 +84,14 @@ jobs:
               <uses-permission android:name="android.permission.RECORD_AUDIO" />
               <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
               <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
               <queries>
                   <intent><action android:name="android.speech.RecognitionService" /></intent>
                   <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
               </queries>
               <application
                   android:allowBackup="true"
-                  android:label="AI Commander 19.0 (Hyper-Speed)"
+                  android:label="Yantra AI (यंत्र)"
                   android:supportsRtl="true"
                   android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
                   <activity android:name=".MainActivity" android:exported="true">
@@ -118,7 +119,7 @@ jobs:
               android:canRetrieveWindowContent="true"
               android:canRequestFilterKeyEvents="true"
               android:canTakeScreenshot="true"
-              android:notificationTimeout="25" />
+              android:notificationTimeout="15" />
           EOF
 
           cat << 'EOF' > app/src/main/java/com/ai/phoneagent/MainActivity.kt
@@ -174,10 +175,10 @@ jobs:
                       layout.addView(Button(this@MainActivity).apply { text = txt ; setOnClickListener { onClick() } })
                   }
 
-                  addLabel("👑 AI Phone Commander 19.0\n(Hyper-Speed Multi-App Task & Research Engine)", 19f, "#38BDF8")
+                  addLabel("🔱 YANTRA AI (यंत्र) 21.0\n(Telepathic 'Hey Yantra' + Ultra-Smooth 0.01s Engine)", 19f, "#38BDF8")
                   val apiInput = makeInput("Yahan Nayi Gemini API Key daalein (AIzaSy...)", "apiKey", isSecret = true)
                   val keyStatusTv = TextView(this).apply {
-                      text = "🔒 Anti-Leak ON: Key dots (••••) mein chhupi rahegi. Har Multi-App Task bijli ki speed se chalega!"
+                      text = "🎙️ 'Hey Yantra' (हे यंत्र) Live Wake-Word ON! बोलते ही 0.01s में एक्शन होगा।"
                       setTextColor(Color.parseColor("#FBBF24")) ; textSize = 12f ; setPadding(0, 4, 0, 8)
                   }
                   layout.addView(keyStatusTv)
@@ -207,7 +208,7 @@ jobs:
                       }
                   }
 
-                  addBtn("🎤 1. Enable Voice Mic Permission") {
+                  addBtn("🎤 1. Enable Voice Mic Permission ('Hey Yantra' ke liye)") {
                       if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 101) else Toast.makeText(this@MainActivity, "Mic ON hai!", Toast.LENGTH_SHORT).show()
                   }
                   addBtn("🪟 2. Enable Floating Window Permission") {
@@ -219,7 +220,7 @@ jobs:
                           if (!pm.isIgnoringBatteryOptimizations(packageName)) startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))) else Toast.makeText(this@MainActivity, "Battery Unrestricted ON hai!", Toast.LENGTH_SHORT).show()
                       } catch (e: Exception) {}
                   }
-                  addBtn("🤖 4. Enable Accessibility Service (Main Haath)") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                  addBtn("🤖 4. Enable Accessibility Service (Yantra AI)") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
 
                   addLabel("📲 Live Redmi Note 10S Hardware Scanner:", 15f, "#FBBF24")
                   layout.addView(TextView(this@MainActivity).apply { text = getLiveHardwareInfo() ; setTextColor(Color.WHITE) ; textSize = 12.5f })
@@ -263,12 +264,12 @@ jobs:
                   })
                   layout.addView(backupRow)
 
-                  addLabel("⚡ Hyper-Speed Multi-App Macro + Flash Router:", 14f, "#FBBF24")
+                  addLabel("⚡ Yantra AI 21.0 Status & Logs:", 14f, "#FBBF24")
                   layout.addView(TextView(this@MainActivity).apply {
                       val m = prefs.getString("activeMission", "None")
                       val lp = prefs.getString("learnedPaths", "None")
                       val l = prefs.getString("brainLogs", "No logs yet.")
-                      text = "🚀 Multi-App Chaining: Switch across ChatGPT, Perplexity, Claude, Gemini, Chrome, Flipkart & YouTube in <0.1s!\n🟢 Active Flash Router: gemini-2.5-flash, gemini-2.5-flash-lite, gemini-3-flash-preview, gemini-3.1-flash-lite-preview, gemini-flash-latest\n\n🎯 Active Mission: $m\n🧭 Learned Paths: $lp\n📜 Recent Brain Logs:\n$l"
+                      text = "👂 Wake Word: 'Hey Yantra' / 'हे यंत्र' (Live Partial Recognition + Auto-Heal Watchdog)\n🚀 Zero-Flicker Smooth Click/Swipe + 0.01s App/Setting/Web Opener\n\n🎯 Active Mission: $m\n🧭 Learned Paths: $lp\n📜 Recent Brain Logs:\n$l"
                       setTextColor(Color.LTGRAY) ; textSize = 11.5f
                   })
 
@@ -358,6 +359,7 @@ jobs:
                   super.onCreate(savedInstanceState)
                   window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
                   isInterruptMode = intent.getBooleanExtra("INTERRUPT_MODE", false)
+                  AgentService.instance?.pauseWakeWordForManualMic()
                   if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                       requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 201)
                   } else launchVoice()
@@ -368,7 +370,7 @@ jobs:
               }
               private fun launchVoice() {
                   try {
-                      val promptText = if (isInterruptMode) "✋ AI ruk gaya hai! Bataiye ab kya karna hai?" else "👑 Boliye, kya bada kaam ya multi-app research karni hai?"
+                      val promptText = if (isInterruptMode) "✋ Yantra ruk gaya hai! Bataiye ab kya karna hai?" else "🔱 हाँ भाई, Yantra AI सुन रहा है! बोलिए क्या करना है?"
                       val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                           putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                           putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
@@ -387,12 +389,17 @@ jobs:
                   }
                   finish()
               }
+              override fun onDestroy() {
+                  AgentService.instance?.resumeWakeWordAfterManualMic()
+                  super.onDestroy()
+              }
           }
           EOF
 
           cat << 'EOF' > app/src/main/java/com/ai/phoneagent/AgentService.kt
           package com.ai.phoneagent
 
+          import android.Manifest
           import android.accessibilityservice.AccessibilityService
           import android.accessibilityservice.GestureDescription
           import android.app.ActivityManager
@@ -400,6 +407,7 @@ jobs:
           import android.content.ClipboardManager
           import android.content.Context
           import android.content.Intent
+          import android.content.pm.PackageManager
           import android.content.res.Configuration
           import android.graphics.*
           import android.graphics.drawable.GradientDrawable
@@ -411,6 +419,9 @@ jobs:
           import android.net.Uri
           import android.os.*
           import android.provider.Settings
+          import android.speech.RecognitionListener
+          import android.speech.RecognizerIntent
+          import android.speech.SpeechRecognizer
           import android.speech.tts.TextToSpeech
           import android.text.TextUtils
           import android.util.Base64
@@ -439,6 +450,7 @@ jobs:
               private lateinit var statusTv: TextView
               private lateinit var cmdInput: EditText
               private lateinit var clearInputBtn: TextView
+              private lateinit var wakeToggleBtn: TextView
               private lateinit var interruptBtn: TextView
               private lateinit var vaultOpenBtn: TextView
               private lateinit var micBtn: TextView
@@ -449,6 +461,9 @@ jobs:
 
               private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
               private var agentJob: Job? = null
+              private var watchdogJob: Job? = null
+              private var partialWakePopupJob: Job? = null
+
               private var isRunning = false
               private var isMinimized = false
               private var isVoiceEnabled = true
@@ -459,6 +474,17 @@ jobs:
               private var latestNotificationText = ""
               private var lastScreenshotTime = 0L
               private var lastVolDownTime = 0L
+
+              // "HEY YANTRA" (हे यंत्र) TELEPATHIC WAKE ENGINE VARIABLES
+              private var wakeRecognizer: SpeechRecognizer? = null
+              private var isWakeWordEnabled = true
+              private var isManualMicOpen = false
+              private var isListeningWakeNow = false
+              private var awaitingCommandAfterWake = false
+              private var wakeWindowExpireTime = 0L
+              private var lastWakeCallbackTime = 0L
+              private var lastExecutedVoiceCmd = ""
+              private var lastExecutedVoiceTime = 0L
 
               private val history = mutableListOf<String>()
               private val recentActionSignatures = mutableListOf<String>()
@@ -499,12 +525,290 @@ jobs:
                   tts = TextToSpeech(this) { status ->
                       if (status == TextToSpeech.SUCCESS) {
                           tts?.setLanguage(Locale("hi", "IN"))
-                          tts?.setSpeechRate(1.22f)
+                          tts?.setSpeechRate(1.24f)
                           tts?.setPitch(1.02f)
                       }
                   }
                   createMovableFloatingBar()
                   scope.launch(Dispatchers.IO) { refreshInstalledAppsCache() }
+                  startWakeWordWatchdog()
+              }
+
+              // SELF-HEALING WATCHDOG: Guarantees "Hey Yantra" mic never dies on MIUI!
+              private fun startWakeWordWatchdog() {
+                  watchdogJob?.cancel()
+                  watchdogJob = scope.launch {
+                      delay(600)
+                      startHeyYantraWakeLoop(forceReset = true)
+                      while (isActive) {
+                          delay(2800L)
+                          if (isWakeWordEnabled && !isManualMicOpen && !isRunning) {
+                              val idleMs = System.currentTimeMillis() - lastWakeCallbackTime
+                              if (!isListeningWakeNow || idleMs > 7500L) {
+                                  startHeyYantraWakeLoop(forceReset = idleMs > 7500L)
+                              }
+                          }
+                      }
+                  }
+              }
+
+              private fun buildWakeRecognizerIntent(): Intent {
+                  return Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                      putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                      putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
+                      putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("en-IN", "hi-IN"))
+                      putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                      putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                      putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 900L)
+                      putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 700L)
+                  }
+              }
+
+              private fun initWakeRecognizer(forceRecreate: Boolean = false) {
+                  if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return
+                  if (!SpeechRecognizer.isRecognitionAvailable(this)) return
+                  if (forceRecreate && wakeRecognizer != null) {
+                      try { wakeRecognizer?.cancel() ; wakeRecognizer?.destroy() } catch (e: Exception) {}
+                      wakeRecognizer = null
+                  }
+                  if (wakeRecognizer != null) return
+
+                  wakeRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
+                      setRecognitionListener(object : RecognitionListener {
+                          override fun onReadyForSpeech(params: Bundle?) {
+                              isListeningWakeNow = true
+                              lastWakeCallbackTime = System.currentTimeMillis()
+                          }
+                          override fun onBeginningOfSpeech() {
+                              lastWakeCallbackTime = System.currentTimeMillis()
+                          }
+                          override fun onRmsChanged(rmsdB: Float) {}
+                          override fun onBufferReceived(buffer: ByteArray?) {}
+                          override fun onEndOfSpeech() {
+                              isListeningWakeNow = false
+                              lastWakeCallbackTime = System.currentTimeMillis()
+                          }
+                          override fun onError(error: Int) {
+                              isListeningWakeNow = false
+                              lastWakeCallbackTime = System.currentTimeMillis()
+                              if (isWakeWordEnabled && !isManualMicOpen) {
+                                  scope.launch {
+                                      val needsRecreate = (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || error == SpeechRecognizer.ERROR_CLIENT || error == SpeechRecognizer.ERROR_SERVER)
+                                      delay(if (needsRecreate) 450L else 180L)
+                                      startHeyYantraWakeLoop(forceReset = needsRecreate)
+                                  }
+                              }
+                          }
+                          override fun onResults(results: Bundle?) {
+                              isListeningWakeNow = false
+                              lastWakeCallbackTime = System.currentTimeMillis()
+                              partialWakePopupJob?.cancel()
+                              val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                              val best = matches?.firstOrNull()?.trim() ?: ""
+                              if (best.isNotEmpty()) {
+                                  processWakeTranscript(best, isFinal = true)
+                              }
+                              if (isWakeWordEnabled && !isManualMicOpen) {
+                                  scope.launch {
+                                      delay(150L)
+                                      startHeyYantraWakeLoop(forceReset = false)
+                                  }
+                              }
+                          }
+                          override fun onPartialResults(partialResults: Bundle?) {
+                              lastWakeCallbackTime = System.currentTimeMillis()
+                              val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                              val partial = matches?.firstOrNull()?.trim() ?: ""
+                              if (partial.isNotEmpty()) {
+                                  processWakeTranscript(partial, isFinal = false)
+                              }
+                          }
+                          override fun onEvent(eventType: Int, params: Bundle?) {}
+                      })
+                  }
+              }
+
+              // TELEPATHIC WAKE WORD PROCESSOR (Handles both Partial & Final Speech!)
+              private fun processWakeTranscript(rawSpoken: String, isFinal: Boolean) {
+                  val now = System.currentTimeMillis()
+                  val lower = rawSpoken.lowercase().trim()
+                  if (lower.isEmpty()) return
+
+                  // Live visual feedback so user sees the mic is hearing them!
+                  if (!isRunning) {
+                      planPreviewTv.text = "👂 सुन रहा हूँ: \"$rawSpoken\""
+                  }
+
+                  // Avoid duplicate execution within 2.2 seconds
+                  if (lower == lastExecutedVoiceCmd && now - lastExecutedVoiceTime < 2200L) return
+
+                  // Mode 1: Already woken up ("हाँ भाई, बोलिए!") within the last 10 seconds
+                  if (awaitingCommandAfterWake && now < wakeWindowExpireTime) {
+                      val cleanCmd = stripWakeWordPrefix(rawSpoken)
+                      if (cleanCmd.length >= 2) {
+                          // If partial speech already matches an instant reflex (like "youtube open karo" or "torch on karo"), fire immediately!
+                          if (!isFinal && isCompleteInstantCommand(cleanCmd)) {
+                              partialWakePopupJob?.cancel()
+                              awaitingCommandAfterWake = false
+                              lastExecutedVoiceCmd = lower
+                              lastExecutedVoiceTime = now
+                              vibrateTick(55)
+                              onVoiceCommandReceived(cleanCmd, isRunning)
+                              return
+                          }
+                          if (isFinal) {
+                              partialWakePopupJob?.cancel()
+                              awaitingCommandAfterWake = false
+                              lastExecutedVoiceCmd = lower
+                              lastExecutedVoiceTime = now
+                              vibrateTick(55)
+                              onVoiceCommandReceived(cleanCmd, isRunning)
+                              return
+                          }
+                      }
+                      return
+                  } else if (awaitingCommandAfterWake && now >= wakeWindowExpireTime) {
+                      awaitingCommandAfterWake = false
+                  }
+
+                  // Mode 2: Check for "Hey Yantra" / "हे यंत्र" (including common Hindi STT variations like "हे यात्रा" / "अरे यंत्र")
+                  val wakeTriggers = listOf(
+                      "hey yantra", "hi yantra", "hello yantra", "ok yantra", "okay yantra",
+                      "he yantra", "arey yantra", "are yantra", "suno yantra", "oye yantra",
+                      "hey yatra", "he yatra", "ok yatra", "hey mantra", "yantra",
+                      "हे यंत्र", "है यंत्र", "ए यंत्र", "हाय यंत्र", "हेलो यंत्र", "ओके यंत्र",
+                      "अरे यंत्र", "सुनो यंत्र", "ओए यंत्र", "यंत्रा", "यंत्र", "हे यन्त्र", "यन्त्र",
+                      "हे यात्रा", "है यात्रा", "अरे यात्रा", "हे मंत्र", "यत्रा"
+                  )
+                  val matchedWake = wakeTriggers.firstOrNull { lower.contains(it) } ?: return
+                  val afterWake = lower.substringAfter(matchedWake).removePrefix(",").removePrefix(".").trim()
+
+                  // Case A: User spoke "Hey Yantra <command>" in one flow!
+                  if (afterWake.length >= 2) {
+                      partialWakePopupJob?.cancel()
+                      // Telepathic Instant Fire on Partial Speech if it's a clear instant command!
+                      if (!isFinal && isCompleteInstantCommand(afterWake)) {
+                          awaitingCommandAfterWake = false
+                          lastExecutedVoiceCmd = lower
+                          lastExecutedVoiceTime = now
+                          vibrateTick(60)
+                          statusTv.setTextColor(Color.parseColor("#38BDF8"))
+                          statusTv.text = "🔱 Hey Yantra (0.01s): '$afterWake'"
+                          onVoiceCommandReceived(afterWake, isRunning)
+                          return
+                      }
+                      if (isFinal) {
+                          awaitingCommandAfterWake = false
+                          lastExecutedVoiceCmd = lower
+                          lastExecutedVoiceTime = now
+                          vibrateTick(60)
+                          statusTv.setTextColor(Color.parseColor("#38BDF8"))
+                          statusTv.text = "🔱 Hey Yantra: '$afterWake'"
+                          onVoiceCommandReceived(afterWake, isRunning)
+                          return
+                      }
+                  } else {
+                      // Case B: User just said "Hey Yantra" (or "हे यंत्र")
+                      if (isFinal) {
+                          partialWakePopupJob?.cancel()
+                          triggerWakeUpReadyState()
+                      } else {
+                          // If user said "Hey Yantra" in partial results and pauses for 850ms without adding more words, wake up immediately!
+                          partialWakePopupJob?.cancel()
+                          partialWakePopupJob = scope.launch {
+                              delay(850L)
+                              if (!awaitingCommandAfterWake && !isManualMicOpen) {
+                                  triggerWakeUpReadyState()
+                              }
+                          }
+                      }
+                  }
+              }
+
+              private fun triggerWakeUpReadyState() {
+                  val now = System.currentTimeMillis()
+                  if (now - lastExecutedVoiceTime < 1500L) return
+                  lastExecutedVoiceTime = now
+                  awaitingCommandAfterWake = true
+                  wakeWindowExpireTime = now + 10000L
+                  vibrateTick(85)
+                  tts?.stop()
+                  if (isRunning) { agentJob?.cancel() ; isRunning = false }
+                  autoCollapseBar(false)
+                  statusTv.setTextColor(Color.parseColor("#FBBF24"))
+                  statusTv.text = "👂 हाँ भाई, Yantra सुन रहा है! बोलिए क्या करना है?"
+                  planPreviewTv.text = "🎙️ अपना आदेश बोलिए (जैसे: 'YouTube खोलो', 'टॉर्च ऑन करो')..."
+                  // Open foreground VoiceActivity popup so MIUI gives 100% mic priority for the user's command!
+                  startActivity(Intent(this, VoiceActivity::class.java).apply {
+                      putExtra("INTERRUPT_MODE", currentGoal.isNotBlank() && history.isNotEmpty())
+                      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                  })
+              }
+
+              // Checks if a partial transcript is already a complete instant command (so we don't even wait for silence!)
+              private fun isCompleteInstantCommand(cmd: String): Boolean {
+                  val c = cmd.lowercase().trim()
+                  val endTriggers = listOf("open karo", "kholo", "khol do", "खोलो", "खोल दो", "chalu karo", "चालू करो", "on karo", "off karo", "band karo", "बंद करो", "जलाओ")
+                  if (endTriggers.any { c.endsWith(it) } && c.length >= 6) return true
+                  val exacts = listOf("torch on", "torch off", "टॉर्च ऑन", "टॉर्च ऑफ", "scroll karo", "स्क्रॉल करो", "niche karo", "upar karo", "back karo", "home chalo")
+                  return exacts.any { c == it }
+              }
+
+              private fun stripWakeWordPrefix(raw: String): String {
+                  var s = raw.trim()
+                  val prefixes = listOf(
+                      "hey yantra", "hi yantra", "hello yantra", "ok yantra", "okay yantra",
+                      "he yantra", "arey yantra", "are yantra", "suno yantra", "oye yantra",
+                      "hey yatra", "he yatra", "ok yatra", "hey mantra", "yantra",
+                      "हे यंत्र", "है यंत्र", "ए यंत्र", "हाय यंत्र", "हेलो यंत्र", "ओके यंत्र",
+                      "अरे यंत्र", "सुनो यंत्र", "ओए यंत्र", "यंत्रा", "यंत्र", "हे यन्त्र", "यन्त्र",
+                      "हे यात्रा", "है यात्रा", "अरे यात्रा", "हे मंत्र", "यत्रा"
+                  )
+                  for (p in prefixes) {
+                      if (s.lowercase().startsWith(p)) {
+                          s = s.substring(p.length).trim()
+                      }
+                  }
+                  return s.removePrefix(",").removePrefix(".").trim()
+              }
+
+              private fun startHeyYantraWakeLoop(forceReset: Boolean = false) {
+                  if (!isWakeWordEnabled || isManualMicOpen) return
+                  if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return
+                  try {
+                      initWakeRecognizer(forceRecreate = forceReset)
+                      try { wakeRecognizer?.cancel() } catch (e: Exception) {}
+                      lastWakeCallbackTime = System.currentTimeMillis()
+                      wakeRecognizer?.startListening(buildWakeRecognizerIntent())
+                  } catch (e: Exception) {
+                      isListeningWakeNow = false
+                  }
+              }
+
+              private fun stopHeyYantraWakeLoop() {
+                  try {
+                      partialWakePopupJob?.cancel()
+                      isListeningWakeNow = false
+                      wakeRecognizer?.cancel()
+                      wakeRecognizer?.destroy()
+                      wakeRecognizer = null
+                  } catch (e: Exception) {}
+              }
+
+              fun pauseWakeWordForManualMic() {
+                  isManualMicOpen = true
+                  stopHeyYantraWakeLoop()
+              }
+
+              fun resumeWakeWordAfterManualMic() {
+                  isManualMicOpen = false
+                  awaitingCommandAfterWake = false
+                  if (isWakeWordEnabled) {
+                      scope.launch {
+                          delay(300)
+                          startHeyYantraWakeLoop(forceReset = true)
+                      }
+                  }
               }
 
               private fun refreshInstalledAppsCache() {
@@ -515,15 +819,15 @@ jobs:
                       val aiList = mutableListOf<String>()
 
                       val builtInAliases = mapOf(
-                          "youtube" to "com.google.android.youtube", "यूट्यूब" to "com.google.android.youtube", "yt" to "com.google.android.youtube",
-                          "whatsapp" to "com.whatsapp", "व्हाट्सएप" to "com.whatsapp", "व्हाट्सऐप" to "com.whatsapp", "wa" to "com.whatsapp",
-                          "instagram" to "com.instagram.android", "इंस्टाग्राम" to "com.instagram.android", "इंस्टा" to "com.instagram.android", "insta" to "com.instagram.android",
-                          "facebook" to "com.facebook.katana", "फेसबुक" to "com.facebook.katana", "fb" to "com.facebook.katana",
+                          "youtube" to "com.google.android.youtube", "you tube" to "com.google.android.youtube", "utube" to "com.google.android.youtube", "यूट्यूब" to "com.google.android.youtube", "yt" to "com.google.android.youtube",
+                          "whatsapp" to "com.whatsapp", "what's app" to "com.whatsapp", "watsapp" to "com.whatsapp", "व्हाट्सएप" to "com.whatsapp", "व्हाट्सऐप" to "com.whatsapp", "wa" to "com.whatsapp",
+                          "instagram" to "com.instagram.android", "insta gram" to "com.instagram.android", "इंस्टाग्राम" to "com.instagram.android", "इंस्टा" to "com.instagram.android", "insta" to "com.instagram.android",
+                          "facebook" to "com.facebook.katana", "face book" to "com.facebook.katana", "फेसबुक" to "com.facebook.katana", "fb" to "com.facebook.katana",
                           "chrome" to "com.android.chrome", "क्रोम" to "com.android.chrome", "browser" to "com.android.chrome",
                           "play store" to "com.android.vending", "playstore" to "com.android.vending", "प्ले स्टोर" to "com.android.vending",
                           "flipkart" to "com.flipkart.android", "फ्लिपकार्ट" to "com.flipkart.android",
                           "amazon" to "in.amazon.mshop.android.shopping", "अमेज़न" to "in.amazon.mshop.android.shopping",
-                          "phonepe" to "com.phonepe.app", "फोनपे" to "com.phonepe.app",
+                          "phonepe" to "com.phonepe.app", "phone pe" to "com.phonepe.app", "फोनपे" to "com.phonepe.app",
                           "gpay" to "com.google.android.apps.nbu.paisa.user", "google pay" to "com.google.android.apps.nbu.paisa.user",
                           "paytm" to "net.one97.paytm", "पेटीएम" to "net.one97.paytm",
                           "camera" to "com.android.camera", "कैमरा" to "com.android.camera",
@@ -532,20 +836,22 @@ jobs:
                           "calculator" to "com.miui.calculator", "कैलकुलेटर" to "com.miui.calculator",
                           "clock" to "com.android.deskclock", "alarm" to "com.android.deskclock", "अलार्म" to "com.android.deskclock",
                           "calendar" to "com.xiaomi.calendar", "कैलेंडर" to "com.xiaomi.calendar",
-                          "files" to "com.mi.android.globalFileexplorer", "file manager" to "com.mi.android.globalFileexplorer",
+                          "files" to "com.mi.android.globalFileexplorer", "file manager" to "com.mi.android.globalFileexplorer", "फाइल मैनेजर" to "com.mi.android.globalFileexplorer",
                           "security" to "com.miui.securitycenter", "सिक्योरिटी" to "com.miui.securitycenter",
                           "music" to "com.miui.player", "म्यूजिक" to "com.miui.player",
                           "notes" to "com.miui.notes", "नोट्स" to "com.miui.notes",
                           "gmail" to "com.google.android.gm", "जीमेल" to "com.google.android.gm",
-                          "maps" to "com.google.android.apps.maps", "google maps" to "com.google.android.apps.maps",
+                          "maps" to "com.google.android.apps.maps", "google maps" to "com.google.android.apps.maps", "मैप्स" to "com.google.android.apps.maps",
                           "telegram" to "org.telegram.messenger", "टेलीग्राम" to "org.telegram.messenger",
-                          "chatgpt" to "com.openai.chatgpt", "चैटजीपीटी" to "com.openai.chatgpt",
+                          "chatgpt" to "com.openai.chatgpt", "chat gpt" to "com.openai.chatgpt", "चैटजीपीटी" to "com.openai.chatgpt", "चैट जीपीटी" to "com.openai.chatgpt",
                           "gemini" to "com.google.android.apps.bard", "जेमिनी" to "com.google.android.apps.bard",
                           "claude" to "com.anthropic.claude", "perplexity" to "ai.perplexity.app.android",
                           "copilot" to "com.microsoft.copilot", "deepseek" to "com.deepseek.chat",
                           "grok" to "ai.x.grok", "kimi" to "com.moonshot.kimichat",
-                          "canva" to "com.canva.editor", "brave" to "com.brave.browser",
-                          "airtel" to "com.myairtelapp", "myjio" to "com.jio.myjio", "jio" to "com.jio.myjio"
+                          "canva" to "com.canva.editor", "कैनवा" to "com.canva.editor",
+                          "brave" to "com.brave.browser", "ब्रेव" to "com.brave.browser",
+                          "airtel" to "com.myairtelapp", "एयरटेल" to "com.myairtelapp",
+                          "myjio" to "com.jio.myjio", "jio" to "com.jio.myjio", "जियो" to "com.jio.myjio"
                       )
                       tempMap.putAll(builtInAliases)
 
@@ -556,6 +862,7 @@ jobs:
                               val lower = label.lowercase()
                               val pkgLower = info.packageName.lowercase()
                               tempMap[lower] = info.packageName
+                              tempMap[lower.replace(" ", "")] = info.packageName
                               val firstWord = lower.substringBefore(" ").trim()
                               if (firstWord.length >= 3 && !tempMap.containsKey(firstWord)) tempMap[firstWord] = info.packageName
                               labelList.add(label)
@@ -625,17 +932,19 @@ jobs:
               fun onVoiceCommandReceived(spoken: String, wasInterrupted: Boolean) {
                   scope.launch {
                       tts?.stop() ; agentJob?.cancel() ; isRunning = false
-                      cmdInput.setText(spoken)
-                      if (!wasInterrupted && tryOfflineInstantReflex(spoken)) return@launch
-                      delay(80)
+                      val cleanCmd = stripWakeWordPrefix(spoken)
+                      val finalCmd = if (cleanCmd.isNotEmpty()) cleanCmd else spoken
+                      cmdInput.setText(finalCmd)
+                      if (!wasInterrupted && tryOfflineInstantReflex(finalCmd)) return@launch
+                      delay(40)
                       if (wasInterrupted && currentGoal.isNotBlank()) {
-                          liveUserCorrection = spoken
-                          history.add("USER_INTERRUPTED: \"$spoken\"")
+                          liveUserCorrection = finalCmd
+                          history.add("USER_INTERRUPTED: \"$finalCmd\"")
                           statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                          statusTv.text = "✋ Sudhaar: '$spoken'"
+                          statusTv.text = "✋ Sudhaar: '$finalCmd'"
                           startGeniusAgent(true)
                       } else {
-                          currentGoal = spoken ; liveUserCorrection = ""
+                          currentGoal = finalCmd ; liveUserCorrection = ""
                           startGeniusAgent(false)
                       }
                   }
@@ -645,7 +954,7 @@ jobs:
                   tts?.stop() ; agentJob?.cancel() ; isRunning = false
                   setWindowGhostMode(false) ; autoCollapseBar(false)
                   statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                  statusTv.text = "✋ AI ruk gaya! Bolein ya likhein kya sudhaar karna hai..."
+                  statusTv.text = "✋ Yantra ruk gaya! Bolein ya likhein kya sudhaar karna hai..."
                   planPreviewTv.text = "💡 Aapne kaam ke beech mein toka hai (purana kaam yaad hai)"
                   setTouchPassThrough(false)
                   if (openVoice) {
@@ -659,7 +968,7 @@ jobs:
               private fun makePillButton(label: String, bgColor: String): TextView {
                   return TextView(this).apply {
                       text = label ; textSize = 11.5f ; setTextColor(Color.WHITE) ; gravity = Gravity.CENTER
-                      setPadding(15, 8, 15, 8)
+                      setPadding(14, 8, 14, 8)
                       background = GradientDrawable().apply { setColor(Color.parseColor(bgColor)) ; cornerRadius = 18f }
                       layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(4, 0, 0, 0) }
                   }
@@ -701,31 +1010,48 @@ jobs:
                   dragBtn.setOnTouchListener(dragListener)
 
                   statusTv = TextView(this).apply {
-                      text = "👑 AI 19.0 (Hyper-Speed Multi-App): Bolein ya likhein!"
+                      text = "🔱 Yantra AI 21.0: 'Hey Yantra' बोलें या लिखें!"
                       setTextColor(Color.parseColor("#4ADE80")) ; textSize = 11.5f ; maxLines = 2
                       ellipsize = TextUtils.TruncateAt.END ; setPadding(8, 0, 4, 0)
                       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                       setOnTouchListener(dragListener)
                   }
 
+                  wakeToggleBtn = makePillButton("👂", "#16A34A").apply {
+                      setOnClickListener {
+                          isWakeWordEnabled = !isWakeWordEnabled
+                          background = GradientDrawable().apply {
+                              setColor(Color.parseColor(if (isWakeWordEnabled) "#16A34A" else "#475569"))
+                              cornerRadius = 18f
+                          }
+                          if (isWakeWordEnabled) {
+                              statusTv.text = "👂 'Hey Yantra' (हे यंत्र) Hands-Free ON!"
+                              startHeyYantraWakeLoop(forceReset = true)
+                          } else {
+                              statusTv.text = "🔇 'Hey Yantra' Hands-Free OFF"
+                              stopHeyYantraWakeLoop()
+                          }
+                      }
+                  }
+
                   interruptBtn = makePillButton("✋", "#D97706").apply { setOnClickListener { triggerImmediateInterruptAndListen(true) } }
                   vaultOpenBtn = makePillButton("⚙️", "#334155").apply {
                       setOnClickListener { startActivity(Intent(this@AgentService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                   }
-                  stopBtn = makePillButton("⏹", "#DC2626").apply { setOnClickListener { stopAgent("⏹ Aapne AI ko rok diya.") } }
+                  stopBtn = makePillButton("⏹", "#DC2626").apply { setOnClickListener { stopAgent("⏹ Aapne Yantra AI ko rok diya.") } }
                   minBtn = makePillButton("➖", "#475569").apply { setOnClickListener { autoCollapseBar(!isMinimized) } }
 
-                  topRow.addView(dragBtn) ; topRow.addView(statusTv) ; topRow.addView(interruptBtn) ; topRow.addView(vaultOpenBtn) ; topRow.addView(stopBtn) ; topRow.addView(minBtn)
+                  topRow.addView(dragBtn) ; topRow.addView(statusTv) ; topRow.addView(wakeToggleBtn) ; topRow.addView(interruptBtn) ; topRow.addView(vaultOpenBtn) ; topRow.addView(stopBtn) ; topRow.addView(minBtn)
 
                   planPreviewTv = TextView(this).apply {
-                      text = "🎯 Har App, Multi-App Research aur Task < 0.01s speed se..."
+                      text = "👂 बोलें: 'Hey Yantra, YouTube open karo'..."
                       setTextColor(Color.parseColor("#93C5FD")) ; textSize = 10.5f ; maxLines = 2
                       ellipsize = TextUtils.TruncateAt.END ; setPadding(6, 4, 6, 2)
                   }
 
                   inputRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL ; gravity = Gravity.CENTER_VERTICAL ; setPadding(0, 6, 0, 0) }
                   cmdInput = EditText(this).apply {
-                      hint = "Yahan likhein ya 🎤 dabayein..."
+                      hint = "यहाँ लिखें या 'Hey Yantra' बोलें..."
                       setHintTextColor(Color.LTGRAY) ; setTextColor(Color.WHITE) ; textSize = 12.5f
                       setSingleLine(true) ; maxLines = 1 ; ellipsize = TextUtils.TruncateAt.END
                       setPadding(18, 9, 18, 9)
@@ -736,7 +1062,7 @@ jobs:
                               if (isRunning) {
                                   tts?.stop() ; agentJob?.cancel() ; isRunning = false
                                   statusTv.setTextColor(Color.parseColor("#FBBF24"))
-                                  statusTv.text = "✋ AI ruka hai: sudhaar likhkar ▶ dabayein"
+                                  statusTv.text = "✋ Yantra ruka hai: sudhaar likhkar ▶ dabayein"
                               }
                               val curDm = resources.displayMetrics
                               if (params.y > curDm.heightPixels * 0.42) params.y = (curDm.heightPixels * 0.25).toInt()
@@ -759,7 +1085,8 @@ jobs:
                   }
                   actionBtn = makePillButton("▶", "#16A34A").apply {
                       setOnClickListener {
-                          val q = cmdInput.text.toString().trim()
+                          val rawQ = cmdInput.text.toString().trim()
+                          val q = stripWakeWordPrefix(rawQ).ifEmpty { rawQ }
                           if (q.isNotEmpty()) {
                               val wasRunningNow = isRunning
                               tts?.stop() ; agentJob?.cancel() ; isRunning = false
@@ -781,22 +1108,39 @@ jobs:
 
               private fun setTouchPassThrough(passThrough: Boolean) {
                   val view = floatingLayout ?: return
-                  params.flags = if (passThrough) {
+                  val newFlags = if (passThrough) {
                       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                   } else {
                       WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                   }
-                  try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
+                  if (params.flags != newFlags) {
+                      params.flags = newFlags
+                      try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
+                  }
+              }
+
+              // ZERO-FLICKER GHOST MODE: Only hides bar if needed (e.g. screenshot or when tap point overlaps bar!)
+              private fun isPointOverlappingFloatingBar(x: Float, y: Float): Boolean {
+                  val view = floatingLayout ?: return false
+                  val loc = IntArray(2)
+                  view.getLocationOnScreen(loc)
+                  val left = loc[0] - 25
+                  val top = loc[1] - 25
+                  val right = loc[0] + view.width + 25
+                  val bottom = loc[1] + view.height + 25
+                  return x.toInt() in left..right && y.toInt() in top..bottom
               }
 
               private fun setWindowGhostMode(ghost: Boolean) {
                   val view = floatingLayout ?: return
+                  val targetAlpha = if (ghost) 0.0f else 1.0f
+                  if (view.alpha == targetAlpha) return
                   params.flags = if (ghost) {
                       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                   } else {
                       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                   }
-                  view.alpha = if (ghost) 0.0f else 1.0f
+                  view.alpha = targetAlpha
                   try { windowManager.updateViewLayout(view, params) } catch (e: Exception) {}
               }
 
@@ -839,9 +1183,9 @@ jobs:
               }
 
               private fun extractOpenTarget(rawCmd: String): String {
-                  var s = rawCmd.lowercase().trim()
+                  var s = stripWakeWordPrefix(rawCmd).lowercase().trim()
                   val fillerWords = listOf(
-                      "please", "bhai", "ai", "zara", "jara", "turant", "jaldi", "abhi",
+                      "please", "bhai", "ai", "yantra", "यंत्र", "zara", "jara", "turant", "jaldi", "abhi",
                       "open karo", "open kar do", "open kariye", "open kar", "open",
                       "kholo", "khol do", "kholiye", "khol de", "khol",
                       "खोलो", "खोल दो", "खोलिए", "खोल",
@@ -856,24 +1200,25 @@ jobs:
                   return s.replace("\\s+".toRegex(), " ").trim()
               }
 
-              private suspend fun waitForUiReady(previousPkg: String = "", maxWaitMs: Long = 550L) {
+              private suspend fun waitForUiReady(previousPkg: String = "", maxWaitMs: Long = 480L) {
                   val start = System.currentTimeMillis()
-                  delay(70)
+                  delay(55)
                   while (System.currentTimeMillis() - start < maxWaitMs && isRunning) {
                       val root = rootInActiveWindow
                       if (root != null) {
                           val curPkg = root.packageName?.toString() ?: ""
                           if (previousPkg.isNotEmpty() && curPkg.isNotEmpty() && curPkg != previousPkg) {
-                              delay(90) ; return
+                              delay(70) ; return
                           }
                           if (previousPkg.isEmpty() && root.childCount > 0) return
                       }
-                      delay(40)
+                      delay(35)
                   }
               }
 
               private fun tryOfflineInstantReflex(goal: String): Boolean {
-                  val g = goal.trim().lowercase()
+                  val g = stripWakeWordPrefix(goal).trim().lowercase()
+                  if (g.isEmpty()) return false
                   val isMultiAppOrResearchTask = listOf(
                       " और ", " and ", " फिर ", " ke baad ", " phir ",
                       "ek ek karke", "एक एक करके", "sabhi", "सभी", "saare", "सारे",
@@ -883,6 +1228,7 @@ jobs:
                   ).any { g.contains(it) }
                   if (isMultiAppOrResearchTask) return false
 
+                  // 1. Torch ON/OFF (<0.005s)
                   if (g.contains("torch") || g.contains("toch") || g.contains("torc") || g.contains("टॉर्च") || g.contains("flash") || g.contains("फ्लैश") || g.contains("light")) {
                       if (g.contains("off") || g.contains("of") || g.contains("band") || g.contains("बंद") || g.contains("buja")) {
                           executeSystemControl("torch_off") ; speakOut("Torch band") ; stopAgent("🔦 Torch OFF!") ; return true
@@ -891,6 +1237,20 @@ jobs:
                       }
                   }
 
+                  // 2. Screenshot, Lock Screen, Recent Apps (<0.005s)
+                  if (g.contains("screenshot") || g.contains("स्क्रीनशॉट")) {
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
+                      speakOut("Screenshot le liya") ; stopAgent("📸 Screenshot Captured!") ; return true
+                  }
+                  if (g == "lock screen" || g.contains("phone lock karo") || g.contains("स्क्रीन लॉक")) {
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
+                      stopAgent("🔒 Screen Locked!") ; return true
+                  }
+                  if (g.contains("recent app") || g.contains("रीसेंट ऐप")) {
+                      performGlobalAction(GLOBAL_ACTION_RECENTS) ; stopAgent("🗂️ Recent Apps!") ; return true
+                  }
+
+                  // 3. Hardware Inquiry (<0.005s)
                   val isHardwareQuery = listOf(
                       "storage", "stronge", "storge", "storeg", "स्टोरेज",
                       "kitni ram", "ram kitn", "कितनी रैम", "रैम कित",
@@ -901,6 +1261,7 @@ jobs:
                       speakOut(report) ; stopAgent("📲 $report") ; return true
                   }
 
+                  // 4. Smooth Scroll & Swipe (<0.005s)
                   if (g.contains("scroll") || g.contains("स्क्रॉल") || g.contains("scrol") || g.contains("swipe") || g.contains("स्वाइप") || g == "niche karo" || g == "upar karo" || g == "नीचे करो" || g == "ऊपर करो") {
                       if (g.contains("lagataar") || g.contains("लगातार") || g.contains("loop") || g.contains("reels") || g.contains("shorts") || g.contains("रील्स")) {
                           agentJob?.cancel() ; isRunning = true ; autoCollapseBar(true)
@@ -924,6 +1285,7 @@ jobs:
                       return true
                   }
 
+                  // 5. System Navigation & Volume (<0.005s)
                   when {
                       g == "back" || g == "go back" || g.contains("पीछे जाओ") || g.contains("बैक करो") -> { performGlobalAction(GLOBAL_ACTION_BACK) ; stopAgent("🔙 Back!") ; return true }
                       g == "home" || g == "go home" || g.contains("होम स्क्रीन") -> { performGlobalAction(GLOBAL_ACTION_HOME) ; stopAgent("🏠 Home!") ; return true }
@@ -934,6 +1296,7 @@ jobs:
                       g.contains("mute") || g.contains("silent karo") -> { executeSystemControl("mute") ; stopAgent("🔇 Muted!") ; return true }
                   }
 
+                  // 6. Instant Website, App Setting, Phone Setting, or App (<0.005s)
                   val hasOpenWord = listOf("open", "khol", "खोल", "chalu", "चालू", "start", "launch", "chalao", "चलाओ", "setting", "सेटिंग", "website", "site").any { g.contains(it) }
                   val hasSearchOrPlayQuery = listOf("gaana", "गाना", "song", "video", "वीडियो", "search", "सर्च", "episode", "एपिसोड", "message", "मैसेज", "call", "कॉल", "likho", "लिखो", "pucho", "पूछो").any { g.contains(it) }
 
@@ -981,7 +1344,7 @@ jobs:
                       }
 
                       val candidateApp = if (cleanTarget.isNotEmpty()) cleanTarget else g
-                      if (candidateApp.isNotEmpty() && (hasOpenWord || appCacheMap.containsKey(candidateApp))) {
+                      if (candidateApp.isNotEmpty() && (hasOpenWord || appCacheMap.containsKey(candidateApp) || appCacheMap.containsKey(candidateApp.replace(" ", "")))) {
                           if (openAppByName(candidateApp)) {
                               speakOut("$candidateApp khol diya hai") ; stopAgent("🚀 '$candidateApp' (<0.01s) khul gaya!") ; return true
                           }
@@ -1000,10 +1363,10 @@ jobs:
                               speakOut("YouTube par $query chala raha hoon")
                               val prevPkg = rootInActiveWindow?.packageName?.toString() ?: ""
                               fireDirectIntent("youtube_search", query)
-                              waitForUiReady(prevPkg, 900L) ; delay(900)
-                              val pos = findNonAdVideoResult(query) ?: run { performSwipe("up") ; delay(550) ; findNonAdVideoResult(query) }
+                              waitForUiReady(prevPkg, 800L) ; delay(750)
+                              val pos = findNonAdVideoResult(query) ?: run { performSwipe("up") ; delay(450) ; findNonAdVideoResult(query) }
                               if (pos != null) {
-                                  performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(600)
+                                  performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(450)
                                   stopAgent("✅ '$query' (Non-Ad Video) Play Kar Diya!")
                               } else stopAgent("✅ YouTube par '$query' khol diya!")
                           }
@@ -1029,10 +1392,12 @@ jobs:
 
               private fun findPackageInstant(appName: String): String? {
                   val clean = appName.trim().lowercase()
+                  val noSpace = clean.replace(" ", "")
                   if (clean.isEmpty()) return null
                   if (appCacheMap.isEmpty()) refreshInstalledAppsCache()
                   synchronized(appCacheMap) {
                       appCacheMap[clean]?.let { return it }
+                      appCacheMap[noSpace]?.let { return it }
                       for ((label, pkg) in appCacheMap) {
                           if (label == clean || label.contains(clean) || clean.contains(label)) return pkg
                       }
@@ -1051,7 +1416,7 @@ jobs:
                       val label = "${node.text ?: ""} ${node.contentDescription ?: ""}".lowercase()
                       if (label.isNotEmpty() && cleanWords.any { label.contains(it) }) {
                           val r = Rect() ; node.getBoundsInScreen(r)
-                          performSmartClick(id, r.centerX(), r.centerY()) ; delay(400) ; return true
+                          performSmartClick(id, r.centerX(), r.centerY()) ; delay(300) ; return true
                       }
                   }
                   return false
@@ -1085,7 +1450,7 @@ jobs:
 
                       if (!isResumeWithCorrection && needsDeepWebResearch(currentGoal)) {
                           statusTv.setTextColor(Color.parseColor("#38BDF8"))
-                          statusTv.text = "⚡ Hyper-Planner: Multi-App / Research Macro bana raha hoon..."
+                          statusTv.text = "⚡ Yantra Hyper-Planner: Multi-App Macro bana raha hoon..."
                           val currentPkg = rootInActiveWindow?.packageName?.toString() ?: "home"
                           val masterPlan = researchAndPlanWithAI(currentGoal, vaultSummary, installedApps, aiAppsOnPhone, currentPkg)
                           if (!isRunning) return@launch
@@ -1104,7 +1469,7 @@ jobs:
                           speakOut("Theek hai, aapki baat maankar rasta badal raha hoon")
                       } else {
                           statusTv.setTextColor(Color.parseColor("#38BDF8"))
-                          statusTv.text = "⚡ Hyper-Speed Brain Active..."
+                          statusTv.text = "⚡ Yantra Brain Active..."
                       }
 
                       var aiConsultCount = 0
@@ -1138,8 +1503,8 @@ jobs:
                           if (aiConsultCount > 45) { stopAgent("✅ Multi-App Task poora ho gaya! Notes: $collectedNotes") ; break }
 
                           statusTv.setTextColor(Color.parseColor("#60A5FA"))
-                          statusTv.text = "⚡ Brain ($lastWorkingModel): Screen read & macro fire..."
-                          delay(110)
+                          statusTv.text = "⚡ Yantra ($lastWorkingModel): Screen read & macro fire..."
+                          delay(85)
 
                           val (screenSnapshot, structSig) = readScreenElementsWithSignature()
                           if (structSig == lastScreenSig) stuckCount++ else { stuckCount = 0 ; lastScreenSig = structSig }
@@ -1236,25 +1601,25 @@ jobs:
                       }
                       "open_app" -> {
                           val opened = openAppByName(step.optString("app_name", target))
-                          if (opened) waitForUiReady(prevPkg, 650L)
+                          if (opened) waitForUiReady(prevPkg, 550L)
                           return opened
                       }
                       "open_setting" -> {
                           val ok = openRedmiSetting(step.optString("setting_name", target))
-                          if (ok) waitForUiReady(prevPkg, 550L)
+                          if (ok) waitForUiReady(prevPkg, 450L)
                           return ok
                       }
                       "direct_intent" -> {
                           val intentType = step.optString("intent_type", "")
                           val data = step.optString("data", text)
                           val ok = fireDirectIntent(intentType, data)
-                          waitForUiReady(prevPkg, 750L)
+                          waitForUiReady(prevPkg, 650L)
                           if (ok && intentType.lowercase() == "youtube_search" &&
                               (goalLower.contains("chala") || goalLower.contains("चला") || goalLower.contains("play") || goalLower.contains("song") || goalLower.contains("गाना") || goalLower.contains("video") || goalLower.contains("episode") || goalLower.contains("एपिसोड"))) {
-                              delay(950)
-                              val pos = findNonAdVideoResult(data) ?: run { performSwipe("up") ; delay(550) ; findNonAdVideoResult(data) }
+                              delay(800)
+                              val pos = findNonAdVideoResult(data) ?: run { performSwipe("up") ; delay(450) ; findNonAdVideoResult(data) }
                               if (pos != null) {
-                                  performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(600)
+                                  performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(450)
                                   stopAgent("✅ Ad chhodkar asli video chala diya!")
                               }
                           }
@@ -1263,7 +1628,7 @@ jobs:
                       "write_content" -> {
                           copyToClipboard(text)
                           val ok = performSmartType(targetId, x, y, text, step.optBoolean("press_enter", false))
-                          delay(350) ; return ok
+                          delay(260) ; return ok
                       }
                       "scroll_loop" -> {
                           val dir = step.optString("direction", "up")
@@ -1276,57 +1641,57 @@ jobs:
                           return true
                       }
                       "scroll_down" -> {
-                          for (i in 1..step.optInt("times", 1).coerceIn(1, 5)) { if (!isRunning) break ; performSwipe("up") ; delay(320) }
+                          for (i in 1..step.optInt("times", 1).coerceIn(1, 5)) { if (!isRunning) break ; performSwipe("up") ; delay(240) }
                           return true
                       }
-                      "scroll_up" -> { performSwipe("down") ; delay(320) ; return true }
-                      "swipe_left" -> { performSwipe("left") ; delay(280) ; return true }
-                      "swipe_right" -> { performSwipe("right") ; delay(280) ; return true }
-                      "double_tap" -> { val c = getCoordsForTarget(targetId, x, y) ; performDoubleTap(c.first.toFloat(), c.second.toFloat()) ; delay(350) ; return true }
-                      "long_press" -> { val c = getCoordsForTarget(targetId, x, y) ; performLongPress(c.first.toFloat(), c.second.toFloat()) ; delay(400) ; return true }
+                      "scroll_up" -> { performSwipe("down") ; delay(240) ; return true }
+                      "swipe_left" -> { performSwipe("left") ; delay(220) ; return true }
+                      "swipe_right" -> { performSwipe("right") ; delay(220) ; return true }
+                      "double_tap" -> { val c = getCoordsForTarget(targetId, x, y) ; performDoubleTap(c.first.toFloat(), c.second.toFloat()) ; delay(260) ; return true }
+                      "long_press" -> { val c = getCoordsForTarget(targetId, x, y) ; performLongPress(c.first.toFloat(), c.second.toFloat()) ; delay(300) ; return true }
                       "click" -> {
                           val clickedNode = nodeMap[targetId]
                           if (prevPkg == "com.google.android.youtube" && clickedNode != null && isAdElement(clickedNode)) {
-                              performSwipe("up") ; delay(500)
-                              findNonAdVideoResult(currentGoal)?.let { performTap(it.first.toFloat(), it.second.toFloat()) ; delay(600) ; return true }
+                              performSwipe("up") ; delay(400)
+                              findNonAdVideoResult(currentGoal)?.let { performTap(it.first.toFloat(), it.second.toFloat()) ; delay(450) ; return true }
                               return false
                           }
                           if (targetId > 0 || (x > 0 && y > 0)) {
                               performSmartClick(targetId, x, y)
-                              waitForUiReady(prevPkg, 450L)
+                              waitForUiReady(prevPkg, 380L)
                               val afterPkg = rootInActiveWindow?.packageName?.toString() ?: ""
                               if (prevPkg == "com.google.android.youtube" && afterPkg.contains("chrome")) {
                                   failedTargets.add("#$targetId($x,$y)")
-                                  performGlobalAction(GLOBAL_ACTION_BACK) ; delay(400) ; return false
+                                  performGlobalAction(GLOBAL_ACTION_BACK) ; delay(320) ; return false
                               }
                               return true
                           }
                           if (target.isNotEmpty()) {
-                              waitForKeywordOnScreen(target, 1200L)?.let {
+                              waitForKeywordOnScreen(target, 1000L)?.let {
                                   performTap(it.first.toFloat(), it.second.toFloat())
-                                  waitForUiReady(prevPkg, 450L) ; return true
+                                  waitForUiReady(prevPkg, 380L) ; return true
                               }
                           }
                           return false
                       }
                       "click_best_video" -> {
-                          delay(500)
+                          delay(400)
                           val matchKw = step.optString("match_keywords", target)
-                          val pos = findNonAdVideoResult(matchKw) ?: run { performSwipe("up") ; delay(550) ; findNonAdVideoResult(matchKw) }
-                          if (pos != null) { performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(700) ; return true }
+                          val pos = findNonAdVideoResult(matchKw) ?: run { performSwipe("up") ; delay(450) ; findNonAdVideoResult(matchKw) }
+                          if (pos != null) { performTap(pos.first.toFloat(), pos.second.toFloat()) ; delay(500) ; return true }
                           return false
                       }
                       "type" -> {
                           val pressEnter = step.optBoolean("press_enter", true)
                           if (target.isNotEmpty() && targetId <= 0 && x <= 0) {
-                              waitForKeywordOnScreen(target, 1100L)?.let { performTap(it.first.toFloat(), it.second.toFloat()) ; delay(220) }
+                              waitForKeywordOnScreen(target, 900L)?.let { performTap(it.first.toFloat(), it.second.toFloat()) ; delay(160) }
                           }
                           val ok = performSmartType(targetId, x, y, text, pressEnter)
-                          delay(450) ; return ok
+                          delay(340) ; return ok
                       }
-                      "system_control" -> { executeSystemControl(step.optString("command", target)) ; delay(250) ; return true }
-                      "back" -> { performGlobalAction(GLOBAL_ACTION_BACK) ; delay(350) ; return true }
-                      "home" -> { performGlobalAction(GLOBAL_ACTION_HOME) ; delay(350) ; return true }
+                      "system_control" -> { executeSystemControl(step.optString("command", target)) ; delay(180) ; return true }
+                      "back" -> { performGlobalAction(GLOBAL_ACTION_BACK) ; delay(260) ; return true }
+                      "home" -> { performGlobalAction(GLOBAL_ACTION_HOME) ; delay(260) ; return true }
                       "wait" -> { delay(step.optInt("seconds", 1).coerceIn(1, 5) * 1000L) ; return true }
                   }
                   return false
@@ -1348,7 +1713,7 @@ jobs:
                   }
 
                   val prompt = """
-                      You are a Hyper-Speed Multi-App Android Mind (Version 19.0) controlling Xiaomi Redmi Note 10S (${dm.widthPixels}x${dm.heightPixels} px).
+                      You are Yantra AI (Version 21.0), a Hyper-Speed Multi-App Android Mind controlling Xiaomi Redmi Note 10S (${dm.widthPixels}x${dm.heightPixels} px).
                       LIVE HARDWARE: $redmiStatus | TIME: $nowTime
                       MAIN GOAL: "$goal"
                       $corr
@@ -1362,8 +1727,7 @@ jobs:
                       $screen
 
                       HYPER-SPEED MULTI-APP & MACRO RULES:
-                      1. MULTI-STEP MACRO CHAINING: Whenever possible, return 2 to 4 chained steps in `"steps"` so the phone executes them in <0.2s without waiting!
-                         - Example: If you open an app (`open_app`), you can immediately follow it with `type` (with `id: -1` to auto-focus the input box) or `click` (with `target: "Send|Search"`).
+                      1. MULTI-STEP MACRO CHAINING: Whenever possible, return 2 to 4 chained steps in `"steps"` so the phone executes them in <0.15s without waiting!
                       2. MULTI-APP RESEARCH ("ek ek karke sabhi AI app par research karo"):
                          - Check `AI APPS INSTALLED ON THIS PHONE` ($aiAppsOnPhone) and `HISTORY`.
                          - Open the first AI app not yet visited (`{"action": "open_app", "app_name": "ChatGPT"}`), type the user's question (`{"action": "type", "text": "...", "press_enter": true}`), read the answer on screen, save the key finding in `"save_note": "ChatGPT recommends: ..."`, then immediately `open_app` the next AI app!
@@ -1392,7 +1756,7 @@ jobs:
                   rawCommand: String, vaultSummary: String, installedApps: String, aiAppsOnPhone: String, currentPkg: String
               ): JSONObject = withContext(Dispatchers.IO) {
                   val prompt = """
-                      You are the Hyper-Speed Research & Multi-App Planner of Redmi Note 10S Agent 19.0 with Live Google Search.
+                      You are the Hyper-Speed Research & Multi-App Planner of Yantra AI 21.0 with Live Google Search.
                       USER COMMAND: "$rawCommand"
                       AI APPS ON PHONE: $aiAppsOnPhone
                       ALL INSTALLED APPS: $installedApps
@@ -1417,11 +1781,11 @@ jobs:
               private suspend fun captureScreenBase64(): String? {
                   if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
                   val now = System.currentTimeMillis()
-                  if (now - lastScreenshotTime < 1000L) return null
+                  if (now - lastScreenshotTime < 900L) return null
                   lastScreenshotTime = now
                   val deferred = CompletableDeferred<String?>()
                   try {
-                      setWindowGhostMode(true) ; delay(45)
+                      setWindowGhostMode(true) ; delay(35)
                       val dm = resources.displayMetrics
                       takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : AccessibilityService.TakeScreenshotCallback {
                           override fun onSuccess(screenshot: AccessibilityService.ScreenshotResult) {
@@ -1443,7 +1807,7 @@ jobs:
                           override fun onFailure(errorCode: Int) { deferred.complete(null) }
                       })
                   } catch (e: Exception) { setWindowGhostMode(false) ; return null }
-                  val res = withTimeoutOrNull(2500L) { deferred.await() }
+                  val res = withTimeoutOrNull(2200L) { deferred.await() }
                   setWindowGhostMode(false)
                   return res
               }
@@ -1501,7 +1865,7 @@ jobs:
                   val start = System.currentTimeMillis()
                   while (System.currentTimeMillis() - start < timeoutMs && isRunning) {
                       rootInActiveWindow?.let { searchKeywordInTree(it, keys)?.let { pos -> return pos } }
-                      delay(80)
+                      delay(65)
                   }
                   return null
               }
@@ -1741,13 +2105,13 @@ jobs:
                   val explicitNode = nodeMap[id]
                   if (id > 0 || (x > 0 && y > 0)) {
                       val c = getCoordsForTarget(id, x, y)
-                      performTap(c.first.toFloat(), c.second.toFloat()) ; delay(240)
+                      performTap(c.first.toFloat(), c.second.toFloat()) ; delay(180)
                   }
                   var targetNode: AccessibilityNodeInfo? = if (explicitNode != null && explicitNode.isEditable) explicitNode else null
                   val startWait = System.currentTimeMillis()
-                  while (targetNode == null && System.currentTimeMillis() - startWait < 900L && isRunning) {
+                  while (targetNode == null && System.currentTimeMillis() - startWait < 800L && isRunning) {
                       rootInActiveWindow?.let { targetNode = findEditableNode(it) }
-                      if (targetNode == null) delay(60)
+                      if (targetNode == null) delay(50)
                   }
                   val node = targetNode ?: return false
                   node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
@@ -1755,13 +2119,13 @@ jobs:
                   var typed = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
                   if (!typed) { copyToClipboard(text) ; typed = node.performAction(AccessibilityNodeInfo.ACTION_PASTE) }
                   if (pressEnter) {
-                      delay(160)
+                      delay(130)
                       var sent = false
                       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                           sent = node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
                       }
                       if (!sent) {
-                          waitForKeywordOnScreen("send|search|submit|ask|arrow|भेजें", 350L)?.let { performTap(it.first.toFloat(), it.second.toFloat()) }
+                          waitForKeywordOnScreen("send|search|submit|ask|arrow|भेजें", 300L)?.let { performTap(it.first.toFloat(), it.second.toFloat()) }
                       }
                   }
                   return typed
@@ -1839,131 +2203,37 @@ jobs:
                   isRunning = false ; agentJob?.cancel() ; nodeMap.clear()
                   setWindowGhostMode(false)
                   statusTv.setTextColor(Color.parseColor("#4ADE80")) ; statusTv.text = finalText
-                  planPreviewTv.text = "🎯 Agla kadam: Aapke naye aadesh ka intezaar hai..."
+                  planPreviewTv.text = "👂 बोलें: 'Hey Yantra...' या नया आदेश दें"
                   history.clear() ; recentActionSignatures.clear() ; liveUserCorrection = "" ; autoCollapseBar(false)
+                  if (isWakeWordEnabled && !isManualMicOpen) {
+                      scope.launch { delay(220) ; startHeyYantraWakeLoop(forceReset = false) }
+                  }
               }
 
+              // ULTRA-SMOOTH ZERO-FLICKER TAP (Only ghosts floating bar if tap point overlaps the bar!)
               private suspend fun performTap(x: Float, y: Float) {
-                  vibrateTick(12) ; setWindowGhostMode(true) ; delay(30)
+                  vibrateTick(10)
+                  val overlaps = isPointOverlappingFloatingBar(x, y)
+                  if (overlaps) { setWindowGhostMode(true) ; delay(25) }
                   val path = Path().apply { moveTo(x, y) }
-                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 55)).build(), null, null)
-                  delay(65) ; setWindowGhostMode(false)
+                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 48)).build(), null, null)
+                  delay(45)
+                  if (overlaps) setWindowGhostMode(false)
               }
 
               private suspend fun performDoubleTap(x: Float, y: Float) {
-                  vibrateTick(18) ; setWindowGhostMode(true) ; delay(30)
+                  vibrateTick(15)
+                  val overlaps = isPointOverlappingFloatingBar(x, y)
+                  if (overlaps) { setWindowGhostMode(true) ; delay(25) }
                   val p1 = Path().apply { moveTo(x, y) } ; val p2 = Path().apply { moveTo(x, y) }
-                  val s1 = GestureDescription.StrokeDescription(p1, 0, 45)
-                  val s2 = GestureDescription.StrokeDescription(p2, 105, 45)
+                  val s1 = GestureDescription.StrokeDescription(p1, 0, 42)
+                  val s2 = GestureDescription.StrokeDescription(p2, 95, 42)
                   dispatchGesture(GestureDescription.Builder().addStroke(s1).addStroke(s2).build(), null, null)
-                  delay(85) ; setWindowGhostMode(false)
+                  delay(65)
+                  if (overlaps) setWindowGhostMode(false)
               }
 
               private suspend fun performLongPress(x: Float, y: Float) {
-                  vibrateTick(30) ; setWindowGhostMode(true) ; delay(30)
-                  val path = Path().apply { moveTo(x, y) }
-                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 720)).build(), null, null)
-                  delay(90) ; setWindowGhostMode(false)
-              }
-
-              private suspend fun performSwipe(direction: String) {
-                  setWindowGhostMode(true) ; delay(30)
-                  val dm = resources.displayMetrics
-                  val cx = dm.widthPixels / 2f ; val topY = dm.heightPixels * 0.22f ; val botY = dm.heightPixels * 0.76f
-                  val path = Path().apply {
-                      when (direction.lowercase()) {
-                          "down" -> { moveTo(cx, topY) ; lineTo(cx, botY) }
-                          "left" -> { moveTo(dm.widthPixels * 0.86f, dm.heightPixels / 2f) ; lineTo(dm.widthPixels * 0.14f, dm.heightPixels / 2f) }
-                          "right" -> { moveTo(dm.widthPixels * 0.14f, dm.heightPixels / 2f) ; lineTo(dm.widthPixels * 0.86f, dm.heightPixels / 2f) }
-                          "miui_right_pull" -> { moveTo(dm.widthPixels * 0.85f, 15f) ; lineTo(dm.widthPixels * 0.85f, dm.heightPixels * 0.55f) }
-                          "miui_left_pull" -> { moveTo(dm.widthPixels * 0.18f, 15f) ; lineTo(dm.widthPixels * 0.18f, dm.heightPixels * 0.55f) }
-                          else -> { moveTo(cx, botY) ; lineTo(cx, topY) }
-                      }
-                  }
-                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 210)).build(), null, null)
-                  delay(80) ; setWindowGhostMode(false)
-              }
-
-              private fun executeSystemControl(cmd: String): Boolean {
-                  return try {
-                      val c = cmd.lowercase()
-                      when {
-                          c.contains("torch_on") || c.contains("flash_on") -> {
-                              val cam = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-                              cam.cameraIdList.firstOrNull()?.let { cam.setTorchMode(it, true) } ; true
-                          }
-                          c.contains("torch_off") || c.contains("flash_off") -> {
-                              val cam = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-                              cam.cameraIdList.firstOrNull()?.let { cam.setTorchMode(it, false) } ; true
-                          }
-                          c.contains("volume_up") -> { (getSystemService(Context.AUDIO_SERVICE) as AudioManager).adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI) ; true }
-                          c.contains("volume_down") -> { (getSystemService(Context.AUDIO_SERVICE) as AudioManager).adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI) ; true }
-                          c.contains("mute") -> { (getSystemService(Context.AUDIO_SERVICE) as AudioManager).adjustVolume(AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI) ; true }
-                          c.contains("miui_control_center") || c.contains("quick_settings") -> {
-                              val ok = performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
-                              if (!ok) scope.launch { performSwipe("miui_right_pull") }
-                              true
-                          }
-                          c.contains("notification") -> {
-                              val ok = performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
-                              if (!ok) scope.launch { performSwipe("miui_left_pull") }
-                              true
-                          }
-                          else -> false
-                      }
-                  } catch (e: Exception) { false }
-              }
-
-              private fun copyToClipboard(text: String) {
-                  (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("AIClip", text))
-              }
-
-              private fun getInstalledAppNames(): String {
-                  if (cachedAppNamesSummary.isNotEmpty()) return cachedAppNamesSummary
-                  refreshInstalledAppsCache()
-                  return if (cachedAppNamesSummary.isNotEmpty()) cachedAppNamesSummary else "YouTube, WhatsApp, Chrome, Settings, Instagram, ChatGPT, Phone"
-              }
-
-              private fun openAppByName(appName: String): Boolean {
-                  val pm = packageManager
-                  val clean = extractOpenTarget(appName)
-                  if (clean.isEmpty()) return false
-                  if (clean == "setting" || clean == "settings" || clean == "सेटिंग" || clean == "सेटिंग्स") return openRedmiSetting("settings")
-
-                  val pkg = findPackageInstant(clean)
-                  if (pkg != null) {
-                      pm.getLaunchIntentForPackage(pkg)?.let {
-                          it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                          startActivity(it)
-                          return true
-                      }
-                  }
-                  return false
-              }
-
-              private fun vibrateTick(ms: Long) {
-                  try { (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator).vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)) } catch (e: Exception) {}
-              }
-
-              override fun onInterrupt() {}
-              override fun onDestroy() {
-                  if (instance == this) instance = null
-                  agentJob?.cancel()
-                  floatingLayout?.let { try { windowManager.removeView(it) } catch (e: Exception) {} }
-                  tts?.shutdown()
-                  super.onDestroy()
-              }
-          }
-          EOF
-
-      - name: Install Gradle 8.5 Directly and Build APK
-        run: |
-          curl -sL https://services.gradle.org/distributions/gradle-8.5-bin.zip -o gradle.zip
-          unzip -q gradle.zip
-          ./gradle-8.5/bin/gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: AI-Phone-Commander-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+                  vibrateTick(25)
+                  val overlaps = isPointOverlappingFloatingBar(x, y)
+                  if (overlaps
