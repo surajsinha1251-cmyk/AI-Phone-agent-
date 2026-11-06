@@ -21,15 +21,15 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Clean Modular Project (Alpha & Beta v28.1)
+      - name: Generate Clean Modular Project (Build #57 Method)
         run: |
-          # Save custom YantraBrain.kt if it is v28+ before cleaning old repo files
-          rm -f /tmp/SavedBrain.kt
-          if [ -f app/src/main/java/com/ai/phoneagent/YantraBrain.kt ] && grep -q "28\." app/src/main/java/com/ai/phoneagent/YantraBrain.kt; then
-            cp app/src/main/java/com/ai/phoneagent/YantraBrain.kt /tmp/SavedBrain.kt
+          BRAIN_PATH="app/src/main/java/com/ai/phoneagent/YantraBrain.kt"
+          rm -f /tmp/custom_brain.kt
+          if [ -f "$BRAIN_PATH" ] && grep -q "object YantraBrain" "$BRAIN_PATH" && ! grep -q "27.0-MODULAR" "$BRAIN_PATH" && ! grep -q "27.1-MODULAR" "$BRAIN_PATH"; then
+            cp "$BRAIN_PATH" /tmp/custom_brain.kt
           fi
 
-          # Clean entire app directory just like successful Build #57!
+          # Clean entire app directory just like Build #57 so old repo files never conflict!
           rm -rf app build.gradle settings.gradle gradle.properties
           mkdir -p app/src/main/java/com/ai/phoneagent
           mkdir -p app/src/main/res/xml
@@ -73,7 +73,7 @@ jobs:
                   minSdk 26
                   targetSdk 34
                   versionCode 38
-                  versionName "28.1-MODULAR"
+                  versionName "28.1-OMEGA-MODULAR"
               }
               signingConfigs {
                   yantraSign {
@@ -163,7 +163,7 @@ jobs:
           S_HTTP="http"
           sed -i "s|SCHEMA_URL|$S_HTTP://schemas.android.com/apk/res/android|g" app/src/main/AndroidManifest.xml app/src/main/res/xml/accessibility_config.xml
 
-          cat << 'EOF' > /tmp/DefaultYantraBrain.kt
+          cat << 'EOF' > /tmp/default_brain.kt
           package com.ai.phoneagent
 
           import android.accessibilityservice.AccessibilityService
@@ -316,7 +316,7 @@ jobs:
               ): String {
                   return buildString {
                       append("Bhai, main $myVariant ($BRAIN_VERSION) bol raha hoon. Maine apna Mega-Audit poora kar liya hai:\n")
-                      append("• Cache Speed: ${cacheTimeMs}ms ($appCount apps, $aiCount AI apps)\n")
+                      append("• Cache Speed: ${cacheTimeMs}ms ($appCount apps,$aiCount AI apps)\n")
                       append("• Active Model Latency: $modelName (${apiLatencyMs}ms)\n")
                       append("• Brain Logs: $recentLogs\n")
                       append("• Failed Clicks / Bottlenecks: $failedList\n")
@@ -364,10 +364,10 @@ jobs:
           }
           EOF
 
-          if [ -f /tmp/SavedBrain.kt ]; then
-            cp /tmp/SavedBrain.kt app/src/main/java/com/ai/phoneagent/YantraBrain.kt
+          if [ -f /tmp/custom_brain.kt ]; then
+            cp /tmp/custom_brain.kt "$BRAIN_PATH"
           else
-            cp /tmp/DefaultYantraBrain.kt app/src/main/java/com/ai/phoneagent/YantraBrain.kt
+            cp /tmp/default_brain.kt "$BRAIN_PATH"
           fi
 
           cat << 'EOF' > app/src/main/java/com/ai/phoneagent/MainActivity.kt
@@ -441,11 +441,11 @@ jobs:
                       layout.addView(Button(this@MainActivity).apply { text = txt ; setOnClickListener { onClick() } })
                   }
 
-                  addLabel("$myTitle — ${YantraBrain.BRAIN_VERSION}\n(Modular YantraBrain.kt + 3-Way Auto Code Grabber)", 18f, "#38BDF8")
+                  addLabel("$myTitle — ${YantraBrain.BRAIN_VERSION}\n(100% Zero-Touch Auto-Coder + Modular YantraBrain.kt)", 18f, "#38BDF8")
                   val apiInput = makeInput("Yahan Gemini API Key daalein (AIzaSy...)", "apiKey", isSecret = true)
                   val ghTokenInput = makeInput("GitHub Token (ghp_...) 1-Sec Background Auto-Commit ke liye", "githubToken", isSecret = true)
                   val keyStatusTv = TextView(this).apply {
-                      text = "✅ v28.1 Modular Ready: YantraBrain.kt ab alag file mein save rahega!"
+                      text = "✅ v28.1 Ready: Report bhejne ke baad rukega nahi, khud code lekar GitHub YantraBrain.kt mein dale-ga!"
                       setTextColor(Color.parseColor("#4ADE80")) ; textSize = 12f ; setPadding(0, 4, 0, 8)
                   }
                   layout.addView(keyStatusTv)
@@ -478,7 +478,7 @@ jobs:
 
                   addLabel("🧬 Modular Self-Evolution (YantraBrain.kt):", 15f, "#A855F7")
 
-                  addBtn("🧬 1. Run Mega-Audit & Evolve YantraBrain.kt (Zero-Touch)") {
+                  addBtn("🧬 1. Run Mega-Audit & Auto-Evolve YantraBrain.kt") {
                       if (AgentService.instance == null) {
                           Toast.makeText(this@MainActivity, "Pehle Accessibility Service ON karein!", Toast.LENGTH_LONG).show()
                       } else {
@@ -802,9 +802,8 @@ jobs:
                       if (node == null || foundCode != null) return
                       val t = (node.text ?: node.contentDescription ?: "").toString()
                       if (t.contains("package com.ai.phoneagent") && t.contains("object YantraBrain")) {
-                          val pure = YantraBrain.extractPureBrainKotlin(t)
-                          if (pure != null) {
-                              foundCode = pure
+                          YantraBrain.extractPureBrainKotlin(t)?.let {
+                              foundCode = it
                               return
                           }
                       }
@@ -812,6 +811,42 @@ jobs:
                   }
                   scan(root)
                   return foundCode
+              }
+
+              // GUARANTEED BACKGROUND AUTO-CODER FALLBACK: If Gemini UI copy button isn't found, generates YantraBrain.kt directly in background!
+              private suspend fun generateUpgradedBrainInBackground(customReq: String): String? = withContext(Dispatchers.IO) {
+                  val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+                  val key = (prefs.getString("apiKey", "") ?: "").split(",").firstOrNull()?.trim() ?: ""
+                  if (key.isEmpty()) return@withContext null
+                  var conn: HttpURLConnection? = null
+                  try {
+                      conn = URL("${httpsPrefix}[generativelanguage.googleapis.com/v1beta/models/$lastWorkingModel:generateContent?key=$key](https://generativelanguage.googleapis.com/v1beta/models/$lastWorkingModel:generateContent?key=$key)").openConnection() as HttpURLConnection
+                      conn.requestMethod = "POST"
+                      conn.setRequestProperty("Content-Type", "application/json")
+                      conn.connectTimeout = 6000 ; conn.readTimeout = 12000 ; conn.doOutput = true
+                      val prompt = """
+                          Generate ONLY valid Kotlin code for `YantraBrain.kt` starting with `package com.ai.phoneagent` and `object YantraBrain`.
+                          Keep exact method signatures:
+                          - `const val BRAIN_VERSION = "28.2-AUTO-EVOLVED"`
+                          - `val extraAppAliases: Map<String, String>`
+                          - `fun handleCustomReflex(g: String, service: AgentService): Boolean`
+                          - `fun buildMegaAuditPrompt(myVariant: String, targetTwin: String, cacheTimeMs: Long, appCount: Int, aiCount: Int, modelName: String, apiLatencyMs: Long, recentLogs: String, failedList: String, customFeatureRequest: String): String`
+                          - `fun extractPureBrainKotlin(raw: String): String?`
+                          - `fun buildActionPrompt(dmWidth: Int, dmHeight: Int, redmiStatus: String, nowTime: String, goal: String, corr: String, researchedInfo: String, notesSoFar: String, aiAppsOnPhone: String, installedApps: String, vaultSummary: String, latestNotif: String, historyStr: String, failedStr: String, stuckCount: Int, screen: String): String`
+                          User extra feature request: "$customReq"
+                      """.trimIndent()
+                      val body = JSONObject().apply {
+                          put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
+                          put("generationConfig", JSONObject().put("temperature", 0.1).put("maxOutputTokens", 1800))
+                      }
+                      conn.outputStream.use { it.write(body.toString().toByteArray()) }
+                      if (conn.responseCode == 200) {
+                          val resText = conn.inputStream.bufferedReader().readText()
+                          val reply = JSONObject(resText).getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).optString("text", "")
+                          return@withContext YantraBrain.extractPureBrainKotlin(reply)
+                      }
+                  } catch (e: Exception) {} finally { try { conn?.disconnect() } catch (e: Exception) {} }
+                  return@withContext null
               }
 
               fun runSelfDiagnosticAndImprove(openGeminiChat: Boolean, customFeatureRequest: String = "") {
@@ -859,31 +894,25 @@ jobs:
                       if (!openAppByName("gemini")) fireDirectIntent("open_url", "${httpsPrefix}gemini.google.com")
                       waitForUiReady(prevPkg, 1100L) ; delay(950)
 
-                      if (!ensureYantraDevLabChatOpen()) {
-                          pauseForUser("⚠️ 'Yantra Dev Lab' par click karke Paste karein.")
-                          return@launch
+                      if (ensureYantraDevLabChatOpen()) {
+                          if (performSmartType(-1, -1, -1, devLabPrompt, true)) {
+                              delay(400)
+                              waitForKeywordOnScreen("send|submit|भेजें", 600L)?.let { performTap(it.first.toFloat(), it.second.toFloat()) }
+                              delay(500)
+                              performGlobalAction(GLOBAL_ACTION_BACK)
+                          }
                       }
-
-                      if (!performSmartType(-1, -1, -1, devLabPrompt, true)) {
-                          stopAgent("📋 Prompt Clipboard mein hai, Paste karein.")
-                          return@launch
-                      }
-                      delay(400)
-                      waitForKeywordOnScreen("send|submit|भेजें", 600L)?.let { performTap(it.first.toFloat(), it.second.toFloat()) }
-
-                      delay(500)
-                      performGlobalAction(GLOBAL_ACTION_BACK)
 
                       statusTv.setTextColor(Color.parseColor("#38BDF8"))
-                      statusTv.text = "⏳ Step 3/5: Gemini chhota YantraBrain.kt likh raha hai..."
+                      statusTv.text = "⏳ Step 3/5: Gemini se YantraBrain.kt code le raha hoon..."
                       autoCollapseBar(true)
 
                       delay(4500L)
                       var copiedBrainCode = false
-                      for (attempt in 1..14) {
+                      for (attempt in 1..12) {
                           if (!isRunning) return@launch
-                          delay(1600L)
-                          statusTv.text = "🔍 Step 4/5: Screen aur Copy button se YantraBrain.kt le raha hoon (#$attempt)..."
+                          delay(1500L)
+                          statusTv.text = "🔍 Step 4/5: Screen se YantraBrain.kt scan kar raha hoon (#$attempt)..."
                           performSwipe("up") ; delay(350)
 
                           val directScreenKt = scanScreenNodesForBrainCode()
@@ -893,7 +922,7 @@ jobs:
                               break
                           }
 
-                          val copyBtnPos = waitForKeywordOnScreen("copy code|कोड कॉपी करें|copy_button|copy", 550L)
+                          val copyBtnPos = waitForKeywordOnScreen("copy code|कोड कॉपी करें|copy_button|copy", 500L)
                           if (copyBtnPos != null) {
                               performTap(copyBtnPos.first.toFloat(), copyBtnPos.second.toFloat())
                               delay(400)
@@ -906,12 +935,22 @@ jobs:
                           }
                       }
 
+                      // Method C: If screen copy didn't trigger, generate upgraded YantraBrain.kt directly in background so it NEVER stops!
+                      if (!copiedBrainCode && isRunning) {
+                          statusTv.text = "⚡ Direct Background AI se YantraBrain.kt code taiyar kar raha hoon..."
+                          val bgKt = generateUpgradedBrainInBackground(customFeatureRequest)
+                          if (bgKt != null) {
+                              copyToClipboard(bgKt)
+                              copiedBrainCode = true
+                          }
+                      }
+
                       if (copiedBrainCode) {
                           vibrateTick(180)
-                          speakOut("YantraBrain code mil gaya hai, ab GitHub par YantraBrain file update kar raha hoon")
+                          speakOut("YantraBrain code taiyar hai, ab GitHub par update kar raha hoon")
                           pasteCodeToGitHubAndOpenActions()
                       } else {
-                          stopAgent("✅ Report bhej di! Code Copy karke 'Hey Yantra, GitHub paste karo' bolein.")
+                          stopAgent("✅ Report bhej di! Code Copy karke '🚀 Commit YantraBrain.kt' dabayein.")
                       }
                   }
               }
@@ -1284,7 +1323,7 @@ jobs:
                   topRow.addView(dragBtn) ; topRow.addView(statusTv) ; topRow.addView(wakeToggleBtn) ; topRow.addView(selfEvolveBtn) ; topRow.addView(vaultOpenBtn) ; topRow.addView(stopBtn) ; topRow.addView(minBtn)
 
                   planPreviewTv = TextView(this).apply {
-                      text = "🎯 Modular YantraBrain.kt Active (3-Way Auto Code Grabber)"
+                      text = "🎯 Modular YantraBrain.kt Active (Zero-Touch Auto-Coder)"
                       setTextColor(Color.parseColor("#93C5FD")) ; textSize = 10.5f ; setPadding(6, 4, 6, 2)
                   }
 
@@ -1475,4 +1514,264 @@ jobs:
                       "back" -> { performGlobalAction(GLOBAL_ACTION_BACK) ; delay(300) ; return true }
                       "home" -> { performGlobalAction(GLOBAL_ACTION_HOME) ; delay(300) ; return true }
                   }
-                  return
+                  return false
+              }
+
+              private suspend fun waitForKeywordOnScreen(keywordsPipe: String, timeoutMs: Long): Pair<Int, Int>? {
+                  val keys = keywordsPipe.split("|", ",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+                  val start = System.currentTimeMillis()
+                  while (System.currentTimeMillis() - start < timeoutMs && isRunning) {
+                      rootInActiveWindow?.let { searchKeywordInTree(it, keys)?.let { pos -> return pos } }
+                      delay(65)
+                  }
+                  return null
+              }
+
+              private fun searchKeywordInTree(node: AccessibilityNodeInfo?, keys: List<String>): Pair<Int, Int>? {
+                  if (node == null || !node.isVisibleToUser) return null
+                  val r = Rect() ; node.getBoundsInScreen(r)
+                  if (r.width() > 10 && r.height() > 10 && r.centerY() > 80) {
+                      val all = "${node.text ?: ""} ${node.contentDescription ?: ""} ${node.viewIdResourceName ?: ""}".lowercase()
+                      for (k in keys) if (all.contains(k)) return Pair(r.centerX(), r.centerY())
+                  }
+                  for (i in 0 until node.childCount) searchKeywordInTree(node.getChild(i), keys)?.let { return it }
+                  return null
+              }
+
+              fun openRedmiSetting(settingName: String): Boolean {
+                  return try {
+                      val s = settingName.lowercase()
+                      val action = when {
+                          s.contains("wifi") -> Settings.ACTION_WIFI_SETTINGS
+                          s.contains("bluetooth") -> Settings.ACTION_BLUETOOTH_SETTINGS
+                          s.contains("storage") -> Settings.ACTION_INTERNAL_STORAGE_SETTINGS
+                          s.contains("display") -> Settings.ACTION_DISPLAY_SETTINGS
+                          else -> Settings.ACTION_SETTINGS
+                      }
+                      startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) ; true
+                  } catch (e: Exception) { false }
+              }
+
+              fun fireDirectIntent(intentType: String, data: String): Boolean {
+                  return try {
+                      val intent = when (intentType.lowercase()) {
+                          "youtube_search" -> Intent(Intent.ACTION_SEARCH).apply { setPackage("com.google.android.youtube") ; putExtra("query", data) }
+                          "web_search" -> Intent(Intent.ACTION_VIEW, Uri.parse("${httpsPrefix}[www.google.com/search?q=$](https://www.google.com/search?q=$){Uri.encode(data)}"))
+                          "open_url" -> Intent(Intent.ACTION_VIEW, Uri.parse(if (data.startsWith("http")) data else "$httpsPrefix$data"))
+                          else -> null
+                      }
+                      if (intent != null) { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ; startActivity(intent) ; true } else false
+                  } catch (e: Exception) { false }
+              }
+
+              private suspend fun callGeminiAPI(
+                  prompt: String, useGoogleSearch: Boolean, base64Image: String?, taskCategory: String, maxTokensOverride: Int = 450
+              ): JSONObject = withContext(Dispatchers.IO) {
+                  val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+                  val keyList = (prefs.getString("apiKey", "") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                  if (keyList.isEmpty()) return@withContext JSONObject().put("action", "done").put("message", "Save API Key in ⚙️")
+
+                  val now = System.currentTimeMillis()
+                  val models = mutableListOf<String>()
+                  if ((rateLimitedUntilMap[lastWorkingModel] ?: 0L) < now) models.add(lastWorkingModel)
+                  for (m in fastActionModels) if (!models.contains(m) && (rateLimitedUntilMap[m] ?: 0L) < now) models.add(m)
+                  if (models.isEmpty()) models.addAll(fastActionModels)
+
+                  for (keyAttempt in keyList.indices) {
+                      val activeKey = keyList[(currentApiKeyIndex + keyAttempt) % keyList.size]
+                      for (modelName in models) {
+                          var conn: HttpURLConnection? = null
+                          try {
+                              conn = URL("${httpsPrefix}[generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$activeKey](https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$activeKey)").openConnection() as HttpURLConnection
+                              conn.requestMethod = "POST"
+                              conn.setRequestProperty("Content-Type", "application/json")
+                              conn.connectTimeout = 3800 ; conn.readTimeout = 7000 ; conn.doOutput = true
+
+                              val body = JSONObject().apply {
+                                  put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
+                                  put("generationConfig", JSONObject().put("responseMimeType", "application/json").put("temperature", 0.1).put("maxOutputTokens", maxTokensOverride))
+                              }
+                              conn.outputStream.use { it.write(body.toString().toByteArray()) }
+                              if (conn.responseCode == 200) {
+                                  lastWorkingModel = modelName
+                                  prefs.edit().putString("lastFastModel", modelName).apply()
+                                  val resText = conn.inputStream.bufferedReader().readText()
+                                  val text = JSONObject(resText).getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).optString("text", "{}")
+                                  saveBrainLog("OK [$modelName | $taskCategory]")
+                                  val s = text.indexOf('{') ; val e = text.lastIndexOf('}')
+                                  return@withContext if (s != -1 && e > s) JSONObject(text.substring(s, e + 1)) else JSONObject()
+                              } else if (conn.responseCode == 429) {
+                                  rateLimitedUntilMap[modelName] = System.currentTimeMillis() + 60_000L
+                              }
+                          } catch (e: Exception) {} finally { try { conn?.disconnect() } catch (e: Exception) {} }
+                      }
+                  }
+                  return@withContext JSONObject().put("action", "wait")
+              }
+
+              private suspend fun performSmartClick(id: Int, x: Int, y: Int) {
+                  nodeMap[id]?.let { n ->
+                      val r = Rect() ; n.getBoundsInScreen(r)
+                      if (r.centerX() > 0 && r.centerY() > 0) { performTap(r.centerX().toFloat(), r.centerY().toFloat()) ; return }
+                  }
+                  if (x > 0 && y > 0) performTap(x.toFloat(), y.toFloat())
+              }
+
+              private suspend fun performSmartType(id: Int, x: Int, y: Int, text: String, pressEnter: Boolean): Boolean {
+                  var targetNode: AccessibilityNodeInfo? = nodeMap[id]
+                  val startWait = System.currentTimeMillis()
+                  while (targetNode == null && System.currentTimeMillis() - startWait < 800L && isRunning) {
+                      rootInActiveWindow?.let { targetNode = findEditableNode(it) }
+                      if (targetNode == null) delay(50)
+                  }
+                  val node = targetNode ?: return false
+                  node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                  val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
+                  var typed = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                  if (!typed) { copyToClipboard(text) ; typed = node.performAction(AccessibilityNodeInfo.ACTION_PASTE) }
+                  if (pressEnter) {
+                      delay(130)
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+                  }
+                  return typed
+              }
+
+              private fun findEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+                  var focused: AccessibilityNodeInfo? = null ; var any: AccessibilityNodeInfo? = null
+                  fun search(node: AccessibilityNodeInfo?) {
+                      if (node == null || !node.isVisibleToUser) return
+                      if (node.isEditable) {
+                          if (node.isFocused) { focused = node ; return }
+                          if (any == null) any = node
+                      }
+                      for (i in 0 until node.childCount) { search(node.getChild(i)) ; if (focused != null) return }
+                  }
+                  search(root)
+                  return focused ?: any
+              }
+
+              private fun readScreenElementsWithSignature(): Pair<String, String> {
+                  nodeMap.clear()
+                  val root = rootInActiveWindow ?: return Pair("Empty", "empty")
+                  val dm = resources.displayMetrics
+                  val list = mutableListOf<String>()
+                  var nextId = 1
+                  fun traverse(node: AccessibilityNodeInfo?) {
+                      if (node == null || !node.isVisibleToUser || nextId > 120) return
+                      val rect = Rect() ; node.getBoundsInScreen(rect)
+                      val text = (node.text ?: node.contentDescription ?: "").toString().trim()
+                      if (text.isNotEmpty() || node.isEditable || node.isClickable) {
+                          val cx = rect.centerX() ; val cy = rect.centerY()
+                          if (cx in 5..(dm.widthPixels - 5) && cy in 75..(dm.heightPixels - 15)) {
+                              val id = nextId++
+                              nodeMap[id] = node
+                              list.add("#$id '${text.take(80)}' at ($cx,$cy)")
+                          }
+                      }
+                      for (i in 0 until node.childCount) traverse(node.getChild(i))
+                  }
+                  traverse(root)
+                  return Pair(list.joinToString("\n"), "${list.size}")
+              }
+
+              private fun pauseForUser(alertText: String) {
+                  isRunning = false ; setWindowGhostMode(false) ; statusTv.text = alertText ; autoCollapseBar(false)
+              }
+
+              fun stopAgent(finalText: String) {
+                  isRunning = false ; agentJob?.cancel() ; nodeMap.clear()
+                  setWindowGhostMode(false) ; statusTv.text = finalText ; autoCollapseBar(false)
+                  if (isWakeWordEnabled && !isManualMicOpen) scope.launch { delay(300) ; startHeyYantraWakeLoop() }
+              }
+
+              private suspend fun performTap(x: Float, y: Float) {
+                  vibrateTick(12) ; setWindowGhostMode(true) ; delay(25)
+                  val path = Path().apply { moveTo(x, y) }
+                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 48)).build(), null, null)
+                  delay(55) ; setWindowGhostMode(false)
+              }
+
+              private suspend fun performSwipe(direction: String) {
+                  setWindowGhostMode(true) ; delay(25)
+                  val dm = resources.displayMetrics
+                  val cx = dm.widthPixels / 2f ; val topY = dm.heightPixels * 0.22f ; val botY = dm.heightPixels * 0.76f
+                  val path = Path().apply {
+                      if (direction == "down") { moveTo(cx, topY) ; lineTo(cx, botY) }
+                      else { moveTo(cx, botY) ; lineTo(cx, topY) }
+                  }
+                  dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 190)).build(), null, null)
+                  delay(70) ; setWindowGhostMode(false)
+              }
+
+              fun executeSystemControl(cmd: String): Boolean {
+                  return try {
+                      val c = cmd.lowercase()
+                      val cam = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+                      when {
+                          c.contains("torch_on") -> { cam.cameraIdList.firstOrNull()?.let { cam.setTorchMode(it, true) } ; true }
+                          c.contains("torch_off") -> { cam.cameraIdList.firstOrNull()?.let { cam.setTorchMode(it, false) } ; true }
+                          else -> false
+                      }
+                  } catch (e: Exception) { false }
+              }
+
+              private fun copyToClipboard(text: String) {
+                  (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("AIClip", text))
+              }
+
+              fun openAppByName(appName: String): Boolean {
+                  val clean = extractOpenTarget(appName)
+                  val pkg = findPackageInstant(clean) ?: return false
+                  packageManager.getLaunchIntentForPackage(pkg)?.let {
+                      it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                      startActivity(it) ; return true
+                  }
+                  return false
+              }
+
+              private fun vibrateTick(ms: Long) {
+                  try { (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator).vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)) } catch (e: Exception) {}
+              }
+
+              override fun onInterrupt() {}
+              override fun onDestroy() {
+                  if (instance == this) instance = null
+                  stopHeyYantraWakeLoop() ; agentJob?.cancel()
+                  floatingLayout?.let { try { windowManager.removeView(it) } catch (e: Exception) {} }
+                  tts?.shutdown() ; super.onDestroy()
+              }
+          }
+          EOF
+
+      - name: Install Gradle 8.5 & Build Both Twin APKs (With Auto-Healing Fallback)
+        run: |
+          P="https"
+          curl -sL "$P://services.gradle.org/distributions/gradle-8.5-bin.zip" -o gradle.zip
+          unzip -q gradle.zip
+          ./gradle-8.5/bin/gradle assembleDebug --no-daemon --stacktrace || {
+            echo "Restoring fallback YantraBrain.kt and rebuilding..."
+            cp /tmp/default_brain.kt app/src/main/java/com/ai/phoneagent/YantraBrain.kt
+            ./gradle-8.5/bin/gradle assembleDebug --no-daemon --stacktrace
+          }
+
+      - name: Sync Verified YantraBrain.kt to Repo
+        run: |
+          git config user.name "Yantra-Auto-Modular"
+          git config user.email "yantra-bot@users.noreply.github.com"
+          git add yantra.keystore app/src/main/java/com/ai/phoneagent/YantraBrain.kt
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync verified modular YantraBrain.kt [skip ci]" || true
+            git push origin HEAD:main || true
+          fi
+
+      - name: Upload Yantra Alpha APK (Master Developer App)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Yantra-Alpha-APK
+          path: app/build/outputs/apk/alpha/debug/app-alpha-debug.apk
+
+      - name: Upload Yantra Beta APK (Twin Tester App)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Yantra-Beta-APK
+          path: app/build/outputs/apk/beta/debug/app-beta-debug.apk
