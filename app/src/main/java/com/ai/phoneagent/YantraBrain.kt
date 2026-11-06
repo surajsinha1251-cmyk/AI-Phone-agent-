@@ -1,24 +1,36 @@
 package com.ai.phoneagent
 
-import org.json.JSONObject
+import android.accessibilityservice.AccessibilityService
+import android.content.Context
+import android.media.AudioManager
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 object YantraBrain {
-    const val BRAIN_VERSION = "27.0-MODULAR-BRAIN"
+    const val BRAIN_VERSION = "28.1-OMEGA-MODULAR"
 
-    // 1. Extra App Shortcuts (Evolved dynamically)
     val extraAppAliases = mapOf(
         "studio" to "com.google.android.apps.youtube.creator",
         "yt studio" to "com.google.android.apps.youtube.creator",
         "seller" to "com.amazon.sellermobile.android",
+        "amazon seller" to "com.amazon.sellermobile.android",
         "flipkart seller" to "com.flipkart.seller",
         "truecaller" to "com.truecaller",
         "meesho" to "com.meesho.supply",
         "zepto" to "com.zeptoconsumerapp",
-        "blinkit" to "com.grofers.customerapp"
+        "blinkit" to "com.grofers.customerapp",
+        "whatsapp business" to "com.whatsapp.w4b",
+        "paytm business" to "net.one97.merchant",
+        "telegram" to "org.telegram.messenger",
+        "spotify" to "com.spotify.music",
+        "jio" to "com.jio.myjio",
+        "airtel" to "com.myairtelapp",
+        "canva" to "com.canva.editor"
     )
 
-    // 2. Smart Instant Offline Reflexes (0.01s Execution without API cost)
     fun handleCustomReflex(g: String, service: AgentService): Boolean {
+        val audio = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         when {
             g.contains("battery") || g.contains("storage") || g.contains("ram kitn") || g.contains("स्टोरेज") || g.contains("बैटरी") -> {
                 if (!g.contains("setting") && !g.contains("khol") && !g.contains("open")) {
@@ -28,11 +40,91 @@ object YantraBrain {
                     return true
                 }
             }
-            g.contains(" flashlight ") || g.contains("torch") || g.contains("टॉर्च") -> {
+            g.contains("time kya") || g.contains("samay kya") || g.contains("kitne baje") || g.contains("टाइम क्या") || g.contains("aaj ki date") -> {
+                val nowStr = SimpleDateFormat("hh:mm a, EEEE, dd MMMM", Locale.getDefault()).format(Date())
+                service.speakOut("Abhi samay hai $nowStr")
+                service.stopAgent("🕒 $nowStr")
+                return true
+            }
+            g.contains("flashlight") || g.contains("torch") || g.contains("टॉर्च") -> {
                 val turnOff = g.contains("off") || g.contains("band") || g.contains("बंद")
                 service.executeSystemControl(if (turnOff) "torch_off" else "torch_on")
                 service.speakOut(if (turnOff) "Torch band" else "Torch chalu")
                 service.stopAgent(if (turnOff) "🔦 Torch OFF!" else "🔦 Torch ON!")
+                return true
+            }
+            g.contains("screenshot") || g.contains("स्क्रीनशॉट") -> {
+                service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
+                service.speakOut("Screenshot le liya gaya hai")
+                service.stopAgent("📸 Screenshot Captured!")
+                return true
+            }
+            g.contains("notification") || g.contains("नोटिफिकेशन") -> {
+                service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS)
+                service.stopAgent("🔔 Notifications Opened!")
+                return true
+            }
+            g.contains("control center") || g.contains("quick setting") || g.contains("कंट्रोल सेंटर") -> {
+                service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS)
+                service.stopAgent("🎛️ Control Center Opened!")
+                return true
+            }
+            g.contains("recent app") || g.contains("रीसेंट") -> {
+                service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS)
+                service.stopAgent("🗂️ Recent Apps!")
+                return true
+            }
+            g == "back" || g == "back karo" || g.contains("पीछे जाओ") || g.contains("बैक करो") -> {
+                service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+                service.stopAgent("🔙 Back!")
+                return true
+            }
+            g == "home" || g == "home chalo" || g.contains("होम स्क्रीन") -> {
+                service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
+                service.stopAgent("🏠 Home Screen!")
+                return true
+            }
+            g.contains("volume up") || g.contains("aawaz badha") || g.contains("full aawaz") || g.contains("आवाज़ बढ़ा") -> {
+                audio?.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
+                audio?.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
+                service.speakOut("Aawaz badha di hai")
+                service.stopAgent("🔊 Volume Up!")
+                return true
+            }
+            g.contains("volume down") || g.contains("aawaz kam") || g.contains("आवाज़ कम") -> {
+                audio?.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
+                audio?.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
+                service.speakOut("Aawaz kam kar di hai")
+                service.stopAgent("🔉 Volume Down!")
+                return true
+            }
+            g.contains("mute") || g.contains("silent karo") -> {
+                audio?.adjustVolume(AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI)
+                service.stopAgent("🔇 Audio Muted!")
+                return true
+            }
+            (g.contains("youtube par ") || g.contains("यूट्यूब पर ")) && (g.contains("search") || g.contains("chala") || g.contains("play") || g.contains("चलाओ")) -> {
+                val q = g.replace("youtube par", "").replace("यूट्यूब पर", "").replace("search karo", "").replace("chalao", "").replace("chala do", "").replace("play karo", "").replace("चलाओ", "").trim()
+                if (q.length >= 2) {
+                    service.fireDirectIntent("youtube_search", q)
+                    service.speakOut("YouTube par $q khol diya hai")
+                    service.stopAgent("▶️ YouTube Search: '$q'")
+                    return true
+                }
+            }
+            (g.contains("google par ") || g.contains("गूगल पर ")) && g.contains("search") -> {
+                val q = g.replace("google par", "").replace("गूगल पर", "").replace("search karo", "").replace("search", "").trim()
+                if (q.length >= 2) {
+                    service.fireDirectIntent("web_search", q)
+                    service.speakOut("Google par $q search kar diya hai")
+                    service.stopAgent("🌐 Google Search: '$q'")
+                    return true
+                }
+            }
+            g.contains("wifi setting") || g.contains("bluetooth setting") || g.contains("storage setting") || g.contains("display setting") -> {
+                service.openRedmiSetting(g)
+                service.speakOut("Setting khol di hai")
+                service.stopAgent("⚙️ Setting Opened!")
                 return true
             }
             g.contains("clear cache") || g.contains("boost speed") -> {
@@ -44,7 +136,6 @@ object YantraBrain {
         return false
     }
 
-    // 3. Mega-Audit Prompt Builder (Asks for 5+ Batch Upgrades & ONLY YantraBrain.kt code!)
     fun buildMegaAuditPrompt(
         myVariant: String,
         targetTwin: String,
@@ -65,12 +156,11 @@ object YantraBrain {
             append("• Failed Clicks / Bottlenecks: $failedList\n")
             if (customFeatureRequest.isNotEmpty()) append("• User Priority Request: $customFeatureRequest\n")
             append("\n🚨 IMPORTANT MODULAR RULE:\n")
-            append("Ab humein 1300 line ka `gradle.yml` NAHI chahiye! ")
-            append("Kripya ek hi baar mein 5 naye smart offline commands/features aur speed optimizations jodkar SIRF `YantraBrain.kt` (`package com.ai.phoneagent` se lekar aakhiri `}` tak, ~120 lines) ka 100% complete single-box Kotlin code do taaki main usse seedha GitHub par commit kar sakoon!")
+            append("Ab humein 1300 line ka gradle.yml NAHI chahiye! ")
+            append("Kripya ek hi baar mein 5 naye smart offline commands/features aur speed optimizations jodkar SIRF YantraBrain.kt (package com.ai.phoneagent se lekar aakhiri } tak) ka 100% complete single-box Kotlin code do taaki main usse seedha GitHub par commit kar sakoon!")
         }
     }
 
-    // 4. Pure Kotlin Code Sanitizer for YantraBrain.kt
     fun extractPureBrainKotlin(raw: String): String? {
         val clean = raw.replace("```kotlin", "").replace("```java", "").replace("```", "").trim()
         val startIdx = clean.indexOf("package com.ai.phoneagent")
@@ -81,7 +171,6 @@ object YantraBrain {
         return clean.substring(startIdx, endIdx + 1).trim()
     }
 
-    // 5. Master System Prompt for Screen Action Brain
     fun buildActionPrompt(
         dmWidth: Int, dmHeight: Int, redmiStatus: String, nowTime: String,
         goal: String, corr: String, researchedInfo: String, notesSoFar: String,
@@ -100,10 +189,10 @@ object YantraBrain {
             $screen
 
             RULES:
-            1. Chain 2 to 4 fast actions in `"steps"` whenever possible.
-            2. For multi-app research, visit AI apps one by one, save key points in `"save_note"`, then return `"action":"done"` with full summary.
+            1. Chain 2 to 4 fast actions in "steps" whenever possible.
+            2. For multi-app research, visit AI apps one by one, save key points in "save_note", then return "action":"done" with full summary.
             3. Output ONLY valid JSON:
-            {"chosen_button_info":"...","next_step_plan":"...","save_note":"...","speak":"short Hindi","steps":[{"action":"open_app|type|click|open_setting|direct_intent|scroll_down|scroll_up|swipe_left|swipe_right|double_tap|long_press|click_best_video|scroll_loop|system_control|back|home","id":1,"x":540,"y":300,"app_name":"...","target":"...","text":"...","press_enter":true,"reason":"..."}]}
+            {"chosen_button_info":"...","next_step_plan":"...","save_note":"...","speak":"short Hindi","steps":[{"action":"open_app|type|click|open_setting|direct_intent|scroll_down|scroll_up|system_control|back|home","id":1,"x":540,"y":300,"app_name":"...","target":"...","text":"...","press_enter":true,"reason":"..."}]}
         """.trimIndent()
     }
 }
