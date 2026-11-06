@@ -23,6 +23,7 @@ jobs:
 
       - name: Generate Core Project & Modular YantraBrain.kt
         run: |
+          rm -rf app build.gradle settings.gradle gradle.properties
           mkdir -p app/src/main/java/com/ai/phoneagent
           mkdir -p app/src/main/res/xml
 
@@ -64,8 +65,8 @@ jobs:
                   applicationId "com.ai.yantra"
                   minSdk 26
                   targetSdk 34
-                  versionCode 35
-                  versionName "27.0-MODULAR"
+                  versionCode 36
+                  versionName "27.1-MODULAR"
               }
               signingConfigs {
                   yantraSign {
@@ -107,7 +108,7 @@ jobs:
 
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <manifest xmlns:android="SCHEMA_URL">
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
               <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -141,7 +142,7 @@ jobs:
 
           cat << 'EOF' > app/src/main/res/xml/accessibility_config.xml
           <?xml version="1.0" encoding="utf-8"?>
-          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+          <accessibility-service xmlns:android="SCHEMA_URL"
               android:accessibilityEventTypes="typeAllMask"
               android:accessibilityFeedbackType="feedbackGeneric"
               android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagReportViewIds|flagRequestFilterKeyEvents"
@@ -152,12 +153,14 @@ jobs:
               android:notificationTimeout="15" />
           EOF
 
-          if [ ! -f app/src/main/java/com/ai/phoneagent/YantraBrain.kt ]; then
+          S_HTTP="http"
+          sed -i "s|SCHEMA_URL|$S_HTTP://schemas.android.com/apk/res/android|g" app/src/main/AndroidManifest.xml app/src/main/res/xml/accessibility_config.xml
+
           cat << 'EOF' > app/src/main/java/com/ai/phoneagent/YantraBrain.kt
           package com.ai.phoneagent
 
           object YantraBrain {
-              const val BRAIN_VERSION = "27.0-MODULAR-BRAIN"
+              const val BRAIN_VERSION = "27.1-MODULAR-BRAIN"
 
               val extraAppAliases = mapOf(
                   "studio" to "com.google.android.apps.youtube.creator",
@@ -216,8 +219,8 @@ jobs:
                       append("• Failed Clicks / Bottlenecks: $failedList\n")
                       if (customFeatureRequest.isNotEmpty()) append("• User Priority Request: $customFeatureRequest\n")
                       append("\n🚨 IMPORTANT MODULAR RULE:\n")
-                      append("Ab humein 1300 line ka `gradle.yml` NAHI chahiye! ")
-                      append("Kripya ek hi baar mein 5 naye smart offline commands/features aur speed optimizations jodkar SIRF `YantraBrain.kt` (`package com.ai.phoneagent` se lekar aakhiri `}` tak, ~120 lines) ka 100% complete single-box Kotlin code do taaki main usse seedha GitHub par commit kar sakoon!")
+                      append("Ab humein 1300 line ka gradle.yml NAHI chahiye! ")
+                      append("Kripya ek hi baar mein 5 naye smart offline commands/features aur speed optimizations jodkar SIRF YantraBrain.kt (package com.ai.phoneagent se lekar aakhiri } tak, ~120 lines) ka 100% complete single-box Kotlin code do taaki main usse seedha GitHub par commit kar sakoon!")
                   }
               }
 
@@ -249,21 +252,19 @@ jobs:
                       $screen
 
                       RULES:
-                      1. Chain 2 to 4 fast actions in `"steps"` whenever possible.
-                      2. For multi-app research, visit AI apps one by one, save key points in `"save_note"`, then return `"action":"done"` with full summary.
+                      1. Chain 2 to 4 fast actions in "steps" whenever possible.
+                      2. For multi-app research, visit AI apps one by one, save key points in "save_note", then return "action":"done" with full summary.
                       3. Output ONLY valid JSON:
-                      {"chosen_button_info":"...","next_step_plan":"...","save_note":"...","speak":"short Hindi","steps":[{"action":"open_app|type|click|open_setting|direct_intent|scroll_down|scroll_up|swipe_left|swipe_right|double_tap|long_press|click_best_video|scroll_loop|system_control|back|home","id":1,"x":540,"y":300,"app_name":"...","target":"...","text":"...","press_enter":true,"reason":"..."}]}
+                      {"chosen_button_info":"...","next_step_plan":"...","save_note":"...","speak":"short Hindi","steps":[{"action":"open_app|type|click|open_setting|direct_intent|scroll_down|scroll_up|system_control|back|home","id":1,"x":540,"y":300,"app_name":"...","target":"...","text":"...","press_enter":true,"reason":"..."}]}
                   """.trimIndent()
               }
           }
           EOF
-          fi
 
           cat << 'EOF' > app/src/main/java/com/ai/phoneagent/MainActivity.kt
           package com.ai.phoneagent
 
           import android.Manifest
-          import android.app.ActivityManager
           import android.content.*
           import android.content.pm.PackageManager
           import android.graphics.Color
@@ -277,7 +278,6 @@ jobs:
           import org.json.JSONObject
           import java.net.HttpURLConnection
           import java.net.URL
-          import java.util.Locale
 
           class MainActivity : AppCompatActivity() {
               private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -1564,18 +1564,6 @@ jobs:
               }
           }
           EOF
-
-          # AUTO-SANITIZE ANY ACCIDENTAL MARKDOWN LINKS IN XML OR KT FILES
-          sed -i -E 's/\[(https?:\/\/[^]]+)\]\([^)]+\)/\1/g' app/src/main/AndroidManifest.xml app/src/main/res/xml/accessibility_config.xml app/src/main/java/com/ai/phoneagent/*.kt
-
-          git config user.name "Yantra-Auto-Modular"
-          git config user.email "yantra-bot@users.noreply.github.com"
-          git add yantra.keystore app/src/main/java/com/ai/phoneagent/YantraBrain.kt
-          if ! git diff --cached --quiet; then
-            git commit -m "Initialize modular YantraBrain.kt and permanent keystore [skip ci]" || true
-            git pull --rebase origin main || true
-            git push origin HEAD:main || true
-          fi
 
       - name: Install Gradle 8.5 Directly and Build Both Twin APKs
         run: |
