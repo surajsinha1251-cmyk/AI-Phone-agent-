@@ -2,13 +2,16 @@ package com.ai.phoneagent
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
+import android.content.Intent
 import android.media.AudioManager
+import android.net.Uri
+import android.os.Build
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 object YantraBrain {
-    const val BRAIN_VERSION = "28.2-OMEGA-MODULAR"
+    const val BRAIN_VERSION = "29.0-SUPREME-MODULAR"
 
     val extraAppAliases = mapOf(
         "studio" to "com.google.android.apps.youtube.creator",
@@ -16,21 +19,53 @@ object YantraBrain {
         "seller" to "com.amazon.sellermobile.android",
         "amazon seller" to "com.amazon.sellermobile.android",
         "flipkart seller" to "com.flipkart.seller",
+        "seller hub" to "com.flipkart.seller",
+        "termux" to "com.termux",
+        "github" to "com.github.android",
         "truecaller" to "com.truecaller",
         "meesho" to "com.meesho.supply",
         "zepto" to "com.zeptoconsumerapp",
         "blinkit" to "com.grofers.customerapp",
         "whatsapp business" to "com.whatsapp.w4b",
+        "wa business" to "com.whatsapp.w4b",
         "paytm business" to "net.one97.merchant",
         "telegram" to "org.telegram.messenger",
         "spotify" to "com.spotify.music",
         "jio" to "com.jio.myjio",
+        "myjio" to "com.jio.myjio",
         "airtel" to "com.myairtelapp",
-        "canva" to "com.canva.editor"
+        "canva" to "com.canva.editor",
+        "docs" to "com.google.android.apps.docs.editors.docs",
+        "sheets" to "com.google.android.apps.docs.editors.sheets"
     )
+
+    private fun tryOfflineMath(g: String): String? {
+        val m = Regex("""(\d+(?:\.\d+)?)\s*([+\-*/xX×÷])\s*(\d+(?:\.\d+)?)""").find(g) ?: return null
+        val a = m.groupValues[1].toDoubleOrNull() ?: return null
+        val op = m.groupValues[2]
+        val b = m.groupValues[3].toDoubleOrNull() ?: return null
+        val res = when (op) {
+            "+" -> a + b
+            "-" -> a - b
+            "*", "x", "X", "×" -> a * b
+            "/", "÷" -> if (b != 0.0) a / b else return null
+            else -> return null
+        }
+        return if (res % 1.0 == 0.0) res.toLong().toString() else String.format(Locale.US, "%.2f", res)
+    }
 
     fun handleCustomReflex(g: String, service: AgentService): Boolean {
         val audio = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
+        // 1. Instant Offline Math Reflex
+        if (g.contains("kitna") || g.contains("calculate") || g.contains("hisab") || Regex("""\d+\s*[+\-*/×÷]\s*\d+""").containsMatchIn(g)) {
+            tryOfflineMath(g)?.let { ans ->
+                service.speakOut("Jawab hai $ans")
+                service.stopAgent("🧮 Answer: $ans")
+                return true
+            }
+        }
+
         when {
             g.contains("battery") || g.contains("storage") || g.contains("ram kitn") || g.contains("स्टोरेज") || g.contains("बैटरी") -> {
                 if (!g.contains("setting") && !g.contains("khol") && !g.contains("open")) {
@@ -40,8 +75,8 @@ object YantraBrain {
                     return true
                 }
             }
-            g.contains("time kya") || g.contains("samay kya") || g.contains("kitne baje") || g.contains("टाइम क्या") || g.contains("aaj ki date") -> {
-                val nowStr = SimpleDateFormat("hh:mm a, EEEE, dd MMMM", Locale.getDefault()).format(Date())
+            g.contains("time kya") || g.contains("samay kya") || g.contains("kitne baje") || g.contains("टाइम क्या") || g.contains("aaj ki date") || g.contains("tarikh") -> {
+                val nowStr = SimpleDateFormat("hh:mm a, EEEE, dd MMMM yyyy", Locale.getDefault()).format(Date())
                 service.speakOut("Abhi samay hai $nowStr")
                 service.stopAgent("🕒 $nowStr")
                 return true
@@ -57,6 +92,18 @@ object YantraBrain {
                 service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
                 service.speakOut("Screenshot le liya gaya hai")
                 service.stopAgent("📸 Screenshot Captured!")
+                return true
+            }
+            g.contains("lock screen") || g.contains("screen lock") || g.contains("phone lock") || g.contains("लॉक करो") -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
+                    service.stopAgent("🔒 Screen Locked!")
+                    return true
+                }
+            }
+            g.contains("split screen") || g.contains("do screen") || g.contains("स्प्लिट स्क्रीन") -> {
+                service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN)
+                service.stopAgent("🪟 Split Screen Toggled!")
                 return true
             }
             g.contains("notification") || g.contains("नोटिफिकेशन") -> {
@@ -102,6 +149,16 @@ object YantraBrain {
                 audio?.adjustVolume(AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI)
                 service.stopAgent("🔇 Audio Muted!")
                 return true
+            }
+            (g.startsWith("call ") || g.startsWith("dial ")) && g.any { it.isDigit() } -> {
+                val digits = g.filter { it.isDigit() || it == '+' }
+                if (digits.length >= 10) {
+                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    service.startActivity(intent)
+                    service.speakOut("Number dial kar diya hai")
+                    service.stopAgent("📞 Dialing $digits")
+                    return true
+                }
             }
             (g.contains("youtube par ") || g.contains("यूट्यूब पर ")) && (g.contains("search") || g.contains("chala") || g.contains("play") || g.contains("चलाओ")) -> {
                 val q = g.replace("youtube par", "").replace("यूट्यूब पर", "").replace("search karo", "").replace("chalao", "").replace("chala do", "").replace("play karo", "").replace("चलाओ", "").trim()
@@ -178,20 +235,16 @@ object YantraBrain {
         latestNotif: String, historyStr: String, failedStr: String, stuckCount: Int, screen: String
     ): String {
         return """
-            You are Yantra AI ($BRAIN_VERSION) controlling Xiaomi Redmi Note 10S (${dmWidth}x${dmHeight} px).
-            HARDWARE: $redmiStatus | TIME: $nowTime
-            MAIN GOAL: "$goal" | $corr
-            RESEARCHED: "$researchedInfo" | MULTI-APP NOTES: "$notesSoFar"
-            AI APPS: $aiAppsOnPhone | ALL APPS: $installedApps
-            VAULT & RULES: "$vaultSummary" | NOTIF: "$latestNotif"
-            HISTORY: $historyStr | BLACKLISTED: $failedStr | STUCK: $stuckCount
-            SCREEN ELEMENTS:
+            Yantra AI ($BRAIN_VERSION) on Redmi Note 10S (${dmWidth}x${dmHeight}).
+            STATUS: $redmiStatus | TIME: $nowTime
+            GOAL: "$goal" | $corr
+            FACTS: "$researchedInfo" | NOTES: "$notesSoFar"
+            AI_APPS: $aiAppsOnPhone | APPS: $installedApps
+            HISTORY: $historyStr | FAILED: $failedStr
+            SCREEN:
             $screen
 
-            RULES:
-            1. Chain 2 to 4 fast actions in "steps" whenever possible.
-            2. For multi-app research, visit AI apps one by one, save key points in "save_note", then return "action":"done" with full summary.
-            3. Output ONLY valid JSON:
+            Return ONLY valid JSON (chain 2-4 steps for speed):
             {"chosen_button_info":"...","next_step_plan":"...","save_note":"...","speak":"short Hindi","steps":[{"action":"open_app|type|click|open_setting|direct_intent|scroll_down|scroll_up|system_control|back|home","id":1,"x":540,"y":300,"app_name":"...","target":"...","text":"...","press_enter":true,"reason":"..."}]}
         """.trimIndent()
     }
