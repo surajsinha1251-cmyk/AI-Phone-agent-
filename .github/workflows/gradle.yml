@@ -21,15 +21,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Clean Modular Project (Build #57 Method)
+      - name: Generate Clean Modular Project (Bracket-Proof v28.2)
         run: |
           BRAIN_PATH="app/src/main/java/com/ai/phoneagent/YantraBrain.kt"
           rm -f /tmp/custom_brain.kt
-          if [ -f "$BRAIN_PATH" ] && grep -q "object YantraBrain" "$BRAIN_PATH" && ! grep -q "27.0-MODULAR" "$BRAIN_PATH" && ! grep -q "27.1-MODULAR" "$BRAIN_PATH"; then
+          if [ -f "$BRAIN_PATH" ] && grep -q "object YantraBrain" "$BRAIN_PATH" && ! grep -q "27.0-MODULAR" "$BRAIN_PATH" && ! grep -q "27.1-MODULAR" "$BRAIN_PATH" && ! grep -q "28.1-OMEGA" "$BRAIN_PATH"; then
             cp "$BRAIN_PATH" /tmp/custom_brain.kt
           fi
 
-          # Clean entire app directory just like Build #57 so old repo files never conflict!
           rm -rf app build.gradle settings.gradle gradle.properties
           mkdir -p app/src/main/java/com/ai/phoneagent
           mkdir -p app/src/main/res/xml
@@ -72,8 +71,8 @@ jobs:
                   applicationId "com.ai.yantra"
                   minSdk 26
                   targetSdk 34
-                  versionCode 38
-                  versionName "28.1-OMEGA-MODULAR"
+                  versionCode 39
+                  versionName "28.2-OMEGA-MODULAR"
               }
               signingConfigs {
                   yantraSign {
@@ -161,7 +160,10 @@ jobs:
           EOF
 
           S_HTTP="http"
-          sed -i "s|SCHEMA_URL|$S_HTTP://schemas.android.com/apk/res/android|g" app/src/main/AndroidManifest.xml app/src/main/res/xml/accessibility_config.xml
+          S_HOST="schemas"
+          S_DOM="android"
+          S_TLD="com"
+          sed -i "s|SCHEMA_URL|$S_HTTP://$S_HOST.$S_DOM.$S_TLD/apk/res/android|g" app/src/main/AndroidManifest.xml app/src/main/res/xml/accessibility_config.xml
 
           cat << 'EOF' > /tmp/default_brain.kt
           package com.ai.phoneagent
@@ -174,7 +176,7 @@ jobs:
           import java.util.Locale
 
           object YantraBrain {
-              const val BRAIN_VERSION = "28.1-OMEGA-MODULAR"
+              const val BRAIN_VERSION = "28.2-OMEGA-MODULAR"
 
               val extraAppAliases = mapOf(
                   "studio" to "com.google.android.apps.youtube.creator",
@@ -391,7 +393,16 @@ jobs:
           class MainActivity : AppCompatActivity() {
               private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
               private val backupKeys = listOf("apiKey", "githubToken", "vaultName", "vaultContact", "vaultUpi", "vaultSkills", "userMemory", "activeMission", "learnedPaths", "dynamicRules", "verifiedModels", "lastFastModel")
-              private val httpsPrefix = "https" + "://"
+
+              // BRACKET-PROOF DOMAIN BUILDERS (Prevents Markdown auto-linking during copy-paste!)
+              private val proto = "https" + "://"
+              private val googleApiHost = listOf("generativelanguage", "googleapis", "com").joinToString(".")
+              private val aiStudioHost = listOf("aistudio", "google", "com").joinToString(".")
+              private val githubHost = listOf("github", "com").joinToString(".")
+
+              private fun safeUrl(raw: String): String {
+                  return raw.replace(Regex("\\[([^]]+)\\]\\([^)]+\\)"), "$1").replace("[", "").replace("]", "").trim()
+              }
 
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
@@ -441,17 +452,17 @@ jobs:
                       layout.addView(Button(this@MainActivity).apply { text = txt ; setOnClickListener { onClick() } })
                   }
 
-                  addLabel("$myTitle — ${YantraBrain.BRAIN_VERSION}\n(100% Zero-Touch Auto-Coder + Modular YantraBrain.kt)", 18f, "#38BDF8")
+                  addLabel("$myTitle — ${YantraBrain.BRAIN_VERSION}\n(Bracket-Proof API URLs + Zero-Touch Auto-Coder)", 18f, "#38BDF8")
                   val apiInput = makeInput("Yahan Gemini API Key daalein (AIzaSy...)", "apiKey", isSecret = true)
                   val ghTokenInput = makeInput("GitHub Token (ghp_...) 1-Sec Background Auto-Commit ke liye", "githubToken", isSecret = true)
                   val keyStatusTv = TextView(this).apply {
-                      text = "✅ v28.1 Ready: Report bhejne ke baad rukega nahi, khud code lekar GitHub YantraBrain.kt mein dale-ga!"
+                      text = "✅ v28.2 Fixed: 'Invalid authority field [' error 100% solve kar diya gaya hai!"
                       setTextColor(Color.parseColor("#4ADE80")) ; textSize = 12f ; setPadding(0, 4, 0, 8)
                   }
                   layout.addView(keyStatusTv)
 
                   addBtn("🔑 Get New Free API Key (Google AI Studio)") {
-                      try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("${httpsPrefix}[aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {}
+                      try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(safeUrl("$proto$aiStudioHost/app/apikey"))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {}
                   }
 
                   addBtn("💾 Save Keys & Live Test Speed") {
@@ -506,7 +517,7 @@ jobs:
                           startActivity(launchTwin)
                       } else {
                           Toast.makeText(this@MainActivity, "Backup Copy ho gaya! Twin App GitHub Actions se download karein.", Toast.LENGTH_LONG).show()
-                          try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("${httpsPrefix}[github.com/surajsinha1251-cmyk/AI-Phone-agent-/actions](https://github.com/surajsinha1251-cmyk/AI-Phone-agent-/actions)")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {}
+                          try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(safeUrl("$proto$githubHost/surajsinha1251-cmyk/AI-Phone-agent-/actions"))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {}
                       }
                   }
 
@@ -553,20 +564,34 @@ jobs:
               private suspend fun testAllKeysAndDiscoverModels(keys: List<String>, prefs: SharedPreferences): Pair<String, String> = withContext(Dispatchers.IO) {
                   val workingKeys = mutableListOf<String>()
                   var lastErr = ""
+                  val testModels = listOf("gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash")
                   for (k in keys) {
-                      var conn: HttpURLConnection? = null
-                      try {
-                          conn = URL("${httpsPrefix}[generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=$k](https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=$k)").openConnection() as HttpURLConnection
-                          conn.requestMethod = "POST"
-                          conn.setRequestProperty("Content-Type", "application/json")
-                          conn.connectTimeout = 5000 ; conn.readTimeout = 5000 ; conn.doOutput = true
-                          conn.outputStream.use { it.write("""{"contents":[{"parts":[{"text":"hi"}]}]}""".toByteArray()) }
-                          if (conn.responseCode == 200) workingKeys.add(k) else lastErr = "HTTP ${conn.responseCode}"
-                      } catch (e: Exception) { lastErr = e.message ?: "Error" } finally { try { conn?.disconnect() } catch (e: Exception) {} }
+                      var keyWorked = false
+                      for (mName in testModels) {
+                          if (keyWorked) break
+                          var conn: HttpURLConnection? = null
+                          try {
+                              val cleanEndpoint = safeUrl("$proto$googleApiHost/v1beta/models/$mName:generateContent?key=$k")
+                              conn = URL(cleanEndpoint).openConnection() as HttpURLConnection
+                              conn.requestMethod = "POST"
+                              conn.setRequestProperty("Content-Type", "application/json")
+                              conn.connectTimeout = 5000 ; conn.readTimeout = 5000 ; conn.doOutput = true
+                              conn.outputStream.use { it.write("""{"contents":[{"parts":[{"text":"hi"}]}]}""".toByteArray()) }
+                              val code = conn.responseCode
+                              if (code == 200) {
+                                  workingKeys.add(k)
+                                  prefs.edit().putString("lastFastModel", mName).apply()
+                                  keyWorked = true
+                              } else {
+                                  val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
+                                  lastErr = if (err.contains("leaked", true)) "Purani Key Leaked/Blocked hai! Nayi Key banayein." else "HTTP $code ($mName)"
+                              }
+                          } catch (e: Exception) { lastErr = e.message ?: "Error" } finally { try { conn?.disconnect() } catch (e: Exception) {} }
+                      }
                   }
                   if (workingKeys.isNotEmpty()) {
                       prefs.edit().putString("apiKey", workingKeys.joinToString(",")).apply()
-                      return@withContext Pair("#4ADE80", "✅ Working API Key Saved! (${workingKeys.size} Active)")
+                      return@withContext Pair("#4ADE80", "✅ Sahi aur Working API Key Save Ho Gayi! (${workingKeys.size} Active)")
                   }
                   return@withContext Pair("#F87171", "❌ Key Error: $lastErr")
               }
@@ -685,11 +710,22 @@ jobs:
               private var latestNotificationText = ""
               private var lastVolDownTime = 0L
 
-              private val httpsPrefix = "https" + "://"
-              private val githubBrainApiUrl = "${httpsPrefix}[api.github.com/repos/surajsinha1251-cmyk/AI-Phone-agent-/contents/app/src/main/java/com/ai/phoneagent/YantraBrain.kt](https://api.github.com/repos/surajsinha1251-cmyk/AI-Phone-agent-/contents/app/src/main/java/com/ai/phoneagent/YantraBrain.kt)"
-              private val githubBrainEditUrl = "${httpsPrefix}[github.com/surajsinha1251-cmyk/AI-Phone-agent-/edit/main/app/src/main/java/com/ai/phoneagent/YantraBrain.kt](https://github.com/surajsinha1251-cmyk/AI-Phone-agent-/edit/main/app/src/main/java/com/ai/phoneagent/YantraBrain.kt)"
-              private val githubActionsUrl = "${httpsPrefix}[github.com/surajsinha1251-cmyk/AI-Phone-agent-/actions](https://github.com/surajsinha1251-cmyk/AI-Phone-agent-/actions)"
+              // BRACKET-PROOF URL BUILDERS (Zero literal .com strings so copy-paste never adds brackets!)
+              private val proto = "https" + "://"
+              private val googleApiHost = listOf("generativelanguage", "googleapis", "com").joinToString(".")
+              private val githubApiHost = listOf("api", "github", "com").joinToString(".")
+              private val githubWebHost = listOf("github", "com").joinToString(".")
+              private val googleWebHost = listOf("www", "google", "com").joinToString(".")
+              private val geminiWebHost = listOf("gemini", "google", "com").joinToString(".")
+
+              private val githubBrainApiUrl = "$proto$githubApiHost/repos/surajsinha1251-cmyk/AI-Phone-agent-/contents/app/src/main/java/com/ai/phoneagent/YantraBrain.kt"
+              private val githubBrainEditUrl = "$proto$githubWebHost/surajsinha1251-cmyk/AI-Phone-agent-/edit/main/app/src/main/java/com/ai/phoneagent/YantraBrain.kt"
+              private val githubActionsUrl = "$proto$githubWebHost/surajsinha1251-cmyk/AI-Phone-agent-/actions"
               private val geminiDevChatName = "Yantra Dev Lab"
+
+              private fun safeUrl(raw: String): String {
+                  return raw.replace(Regex("\\[([^]]+)\\]\\([^)]+\\)"), "$1").replace("[", "").replace("]", "").trim()
+              }
 
               private var wakeRecognizer: SpeechRecognizer? = null
               private var isWakeWordEnabled = true
@@ -710,10 +746,10 @@ jobs:
               private var cachedAppNamesSummary = ""
 
               private val fastActionModels = listOf(
-                  "gemini-flash-lite-latest", "gemini-2.5-flash-lite", "gemini-3.1-flash-lite-preview", "gemini-2.5-flash"
+                  "gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.1-flash-lite-preview", "gemini-2.5-flash"
               )
               private val rateLimitedUntilMap = mutableMapOf<String, Long>()
-              private var lastWorkingModel = "gemini-flash-lite-latest"
+              private var lastWorkingModel = "gemini-2.5-flash-lite"
               private var currentApiKeyIndex = 0
 
               override fun onServiceConnected() {
@@ -813,21 +849,21 @@ jobs:
                   return foundCode
               }
 
-              // GUARANTEED BACKGROUND AUTO-CODER FALLBACK: If Gemini UI copy button isn't found, generates YantraBrain.kt directly in background!
               private suspend fun generateUpgradedBrainInBackground(customReq: String): String? = withContext(Dispatchers.IO) {
                   val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
                   val key = (prefs.getString("apiKey", "") ?: "").split(",").firstOrNull()?.trim() ?: ""
                   if (key.isEmpty()) return@withContext null
                   var conn: HttpURLConnection? = null
                   try {
-                      conn = URL("${httpsPrefix}[generativelanguage.googleapis.com/v1beta/models/$lastWorkingModel:generateContent?key=$key](https://generativelanguage.googleapis.com/v1beta/models/$lastWorkingModel:generateContent?key=$key)").openConnection() as HttpURLConnection
+                      val endpoint = safeUrl("$proto$googleApiHost/v1beta/models/$lastWorkingModel:generateContent?key=$key")
+                      conn = URL(endpoint).openConnection() as HttpURLConnection
                       conn.requestMethod = "POST"
                       conn.setRequestProperty("Content-Type", "application/json")
                       conn.connectTimeout = 6000 ; conn.readTimeout = 12000 ; conn.doOutput = true
                       val prompt = """
                           Generate ONLY valid Kotlin code for `YantraBrain.kt` starting with `package com.ai.phoneagent` and `object YantraBrain`.
                           Keep exact method signatures:
-                          - `const val BRAIN_VERSION = "28.2-AUTO-EVOLVED"`
+                          - `const val BRAIN_VERSION = "28.3-AUTO-EVOLVED"`
                           - `val extraAppAliases: Map<String, String>`
                           - `fun handleCustomReflex(g: String, service: AgentService): Boolean`
                           - `fun buildMegaAuditPrompt(myVariant: String, targetTwin: String, cacheTimeMs: Long, appCount: Int, aiCount: Int, modelName: String, apiLatencyMs: Long, recentLogs: String, failedList: String, customFeatureRequest: String): String`
@@ -891,7 +927,7 @@ jobs:
 
                       statusTv.text = "🧬 Step 2/5: Gemini '$geminiDevChatName' khol raha hoon..."
                       val prevPkg = rootInActiveWindow?.packageName?.toString() ?: ""
-                      if (!openAppByName("gemini")) fireDirectIntent("open_url", "${httpsPrefix}gemini.google.com")
+                      if (!openAppByName("gemini")) fireDirectIntent("open_url", "$proto$geminiWebHost")
                       waitForUiReady(prevPkg, 1100L) ; delay(950)
 
                       if (ensureYantraDevLabChatOpen()) {
@@ -935,7 +971,6 @@ jobs:
                           }
                       }
 
-                      // Method C: If screen copy didn't trigger, generate upgraded YantraBrain.kt directly in background so it NEVER stops!
                       if (!copiedBrainCode && isRunning) {
                           statusTv.text = "⚡ Direct Background AI se YantraBrain.kt code taiyar kar raha hoon..."
                           val bgKt = generateUpgradedBrainInBackground(customFeatureRequest)
@@ -1020,7 +1055,7 @@ jobs:
                   var getConn: HttpURLConnection? = null
                   var putConn: HttpURLConnection? = null
                   try {
-                      getConn = (URL(githubBrainApiUrl).openConnection() as HttpURLConnection).apply {
+                      getConn = (URL(safeUrl(githubBrainApiUrl)).openConnection() as HttpURLConnection).apply {
                           requestMethod = "GET"
                           setRequestProperty("Authorization", "Bearer $token")
                           setRequestProperty("Accept", "application/vnd.github+json")
@@ -1038,7 +1073,7 @@ jobs:
                           put("branch", "main")
                       }
 
-                      putConn = (URL(githubBrainApiUrl).openConnection() as HttpURLConnection).apply {
+                      putConn = (URL(safeUrl(githubBrainApiUrl)).openConnection() as HttpURLConnection).apply {
                           requestMethod = "PUT"
                           setRequestProperty("Authorization", "Bearer $token")
                           setRequestProperty("Accept", "application/vnd.github+json")
@@ -1323,7 +1358,7 @@ jobs:
                   topRow.addView(dragBtn) ; topRow.addView(statusTv) ; topRow.addView(wakeToggleBtn) ; topRow.addView(selfEvolveBtn) ; topRow.addView(vaultOpenBtn) ; topRow.addView(stopBtn) ; topRow.addView(minBtn)
 
                   planPreviewTv = TextView(this).apply {
-                      text = "🎯 Modular YantraBrain.kt Active (Zero-Touch Auto-Coder)"
+                      text = "🎯 Bracket-Proof API + Zero-Touch Modular Brain Active"
                       setTextColor(Color.parseColor("#93C5FD")) ; textSize = 10.5f ; setPadding(6, 4, 6, 2)
                   }
 
@@ -1554,10 +1589,11 @@ jobs:
 
               fun fireDirectIntent(intentType: String, data: String): Boolean {
                   return try {
+                      val cleanData = safeUrl(data)
                       val intent = when (intentType.lowercase()) {
-                          "youtube_search" -> Intent(Intent.ACTION_SEARCH).apply { setPackage("com.google.android.youtube") ; putExtra("query", data) }
-                          "web_search" -> Intent(Intent.ACTION_VIEW, Uri.parse("${httpsPrefix}[www.google.com/search?q=$](https://www.google.com/search?q=$){Uri.encode(data)}"))
-                          "open_url" -> Intent(Intent.ACTION_VIEW, Uri.parse(if (data.startsWith("http")) data else "$httpsPrefix$data"))
+                          "youtube_search" -> Intent(Intent.ACTION_SEARCH).apply { setPackage("com.google.android.youtube") ; putExtra("query", cleanData) }
+                          "web_search" -> Intent(Intent.ACTION_VIEW, Uri.parse("$proto$googleWebHost/search?q=${Uri.encode(cleanData)}"))
+                          "open_url" -> Intent(Intent.ACTION_VIEW, Uri.parse(if (cleanData.startsWith("http")) cleanData else "$proto$cleanData"))
                           else -> null
                       }
                       if (intent != null) { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ; startActivity(intent) ; true } else false
@@ -1582,7 +1618,8 @@ jobs:
                       for (modelName in models) {
                           var conn: HttpURLConnection? = null
                           try {
-                              conn = URL("${httpsPrefix}[generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$activeKey](https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$activeKey)").openConnection() as HttpURLConnection
+                              val cleanEndpoint = safeUrl("$proto$googleApiHost/v1beta/models/$modelName:generateContent?key=$activeKey")
+                              conn = URL(cleanEndpoint).openConnection() as HttpURLConnection
                               conn.requestMethod = "POST"
                               conn.setRequestProperty("Content-Type", "application/json")
                               conn.connectTimeout = 3800 ; conn.readTimeout = 7000 ; conn.doOutput = true
@@ -1743,13 +1780,15 @@ jobs:
           }
           EOF
 
-      - name: Install Gradle 8.5 & Build Both Twin APKs (With Auto-Healing Fallback)
+      - name: Install Gradle 8.5 & Build Both Twin APKs
         run: |
           P="https"
-          curl -sL "$P://services.gradle.org/distributions/gradle-8.5-bin.zip" -o gradle.zip
+          G_HOST="services"
+          G_DOM="gradle"
+          G_TLD="org"
+          curl -sL "$P://$G_HOST.$G_DOM.$G_TLD/distributions/gradle-8.5-bin.zip" -o gradle.zip
           unzip -q gradle.zip
           ./gradle-8.5/bin/gradle assembleDebug --no-daemon --stacktrace || {
-            echo "Restoring fallback YantraBrain.kt and rebuilding..."
             cp /tmp/default_brain.kt app/src/main/java/com/ai/phoneagent/YantraBrain.kt
             ./gradle-8.5/bin/gradle assembleDebug --no-daemon --stacktrace
           }
