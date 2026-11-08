@@ -1,17 +1,37 @@
 package com.ai.phoneagent
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
 import android.content.Context
 import android.content.Intent
+import android.graphics.Path
+import android.graphics.Rect
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
+import android.provider.AlarmClock
+import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.TextView
+import kotlinx.coroutines.*
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 object YantraBrain {
-    const val BRAIN_VERSION = "29.0-SUPREME-MODULAR"
+    const val BRAIN_VERSION = "30.0-GENIUS-OMNI-BRAIN"
+
+    private val brainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var activeBrainJob: Job? = null
+    private val stepHistory = mutableListOf<String>()
+    private var lastGoalTracked = ""
+
+    private val proto = "https" + "://"
+    private val googleApiHost = listOf("generativelanguage", "googleapis", "com").joinToString(".")
 
     val extraAppAliases = mapOf(
         "studio" to "com.google.android.apps.youtube.creator",
@@ -26,18 +46,25 @@ object YantraBrain {
         "meesho" to "com.meesho.supply",
         "zepto" to "com.zeptoconsumerapp",
         "blinkit" to "com.grofers.customerapp",
+        "swiggy" to "in.swiggy.android",
+        "zomato" to "com.application.zomato",
         "whatsapp business" to "com.whatsapp.w4b",
-        "wa business" to "com.whatsapp.w4b",
         "paytm business" to "net.one97.merchant",
+        "phonepe" to "com.phonepe.app",
+        "gpay" to "com.google.android.apps.nbu.paisa.user",
         "telegram" to "org.telegram.messenger",
         "spotify" to "com.spotify.music",
         "jio" to "com.jio.myjio",
-        "myjio" to "com.jio.myjio",
         "airtel" to "com.myairtelapp",
-        "canva" to "com.canva.editor",
-        "docs" to "com.google.android.apps.docs.editors.docs",
-        "sheets" to "com.google.android.apps.docs.editors.sheets"
+        "canva" to "com.canva.editor"
     )
+
+    private fun updateFloatingStatus(service: AgentService, msg: String) {
+        try {
+            val f = service.javaClass.getDeclaredField("statusTv").apply { isAccessible = true }
+            (f.get(service) as? TextView)?.text = msg
+        } catch (e: Exception) {}
+    }
 
     private fun tryOfflineMath(g: String): String? {
         val m = Regex("""(\d+(?:\.\d+)?)\s*([+\-*/xX×÷])\s*(\d+(?:\.\d+)?)""").find(g) ?: return null
@@ -54,10 +81,88 @@ object YantraBrain {
         return if (res % 1.0 == 0.0) res.toLong().toString() else String.format(Locale.US, "%.2f", res)
     }
 
+    private suspend fun askGeminiWithGoogleSearch(service: AgentService, query: String): String = withContext(Dispatchers.IO) {
+        val prefs = service.getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+        val keys = (prefs.getString("apiKey", "") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        if (keys.isEmpty()) return@withContext "Pehle Settings mein Gemini API Key daalein."
+
+        val models = listOf("gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash")
+        for (k in keys) {
+            for (m in models) {
+                for (useSearch in listOf(true, false)) {
+                    var conn: HttpURLConnection? = null
+                    try {
+                        val url = URL("$proto$googleApiHost/v1beta/models/$m:generateContent?key=$k")
+                        conn = url.openConnection() as HttpURLConnection
+                        conn.requestMethod = "POST"
+                        conn.setRequestProperty("Content-Type", "application/json")
+                        conn.connectTimeout = 5000 ; conn.readTimeout = 9000 ; conn.doOutput = true
+
+                        val prompt = "User Question: \"$query\". Give a direct, accurate, short answer in simple Hinglish/Hindi (maximum 2 sentences). State exact names/numbers clearly."
+                        val body = JSONObject().apply {
+                            put("contents", JSONArray().put(JSONObject().put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
+                            if (useSearch) put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
+                            put("generationConfig", JSONObject().put("temperature", 0.1).put("maxOutputTokens", 300))
+                        }
+                        conn.outputStream.use { it.write(body.toString().toByteArray()) }
+                        if (conn.responseCode == 200) {
+                            val res = conn.inputStream.bufferedReader().readText()
+                            val parts = JSONObject(res).getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts")
+                            val sb = StringBuilder()
+                            for (i in 0 until parts.length()) sb.append(parts.getJSONObject(i).optString("text", ""))
+                            val ans = sb.toString().replace("*", "").replace("#", "").trim()
+                            if (ans.isNotEmpty()) return@withContext ans
+                        }
+                    } catch (e: Exception) {} finally { try { conn?.disconnect() } catch (e: Exception) {} }
+                }
+            }
+        }
+        return@withContext "Abhi server busy hai, kripya dobara puchein."
+    }
+
+    private fun findBestNonAdYouTubeVideo(root: AccessibilityNodeInfo?, screenHeight: Int): Pair<Pair<Int, Int>, String>? {
+        if (root == null) return null
+        val adWords = listOf("sponsored", "विज्ञापन", "ad ·", "ad:", "visit site", "install", "shop now")
+        var bestCoords: Pair<Int, Int>? = null
+        var bestTitle = ""
+
+        fun scan(node: AccessibilityNodeInfo?) {
+            if (node == null || !node.isVisibleToUser || bestCoords != null) return
+            val r = Rect() ; node.getBoundsInScreen(r)
+            val txt = "${node.text ?: ""} ${node.contentDescription ?: ""}".trim()
+            val lower = txt.lowercase()
+            if (r.centerY() in 240..(screenHeight - 180) && r.width() > 200 && r.height() > 60 && txt.length > 10) {
+                val isAd = adWords.any { lower.contains(it) }
+                if (!isAd && (node.isClickable || node.parent?.isClickable == true) && !lower.startsWith("filter") && lower != "shorts") {
+                    if (lower.contains("views") || lower.contains("ago") || lower.contains("बार देखा") || lower.contains("minutes") || txt.length > 20) {
+                        bestCoords = Pair(r.centerX(), r.centerY())
+                        bestTitle = txt.lines().firstOrNull()?.take(70) ?: txt.take(70)
+                        return
+                    }
+                }
+            }
+            for (i in 0 until node.childCount) scan(node.getChild(i))
+        }
+        scan(root)
+        return if (bestCoords != null) Pair(bestCoords!!, bestTitle) else null
+    }
+
+    private suspend fun tapScreen(service: AgentService, x: Int, y: Int) {
+        val path = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
+        service.dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 50)).build(), null, null)
+        delay(100)
+    }
+
     fun handleCustomReflex(g: String, service: AgentService): Boolean {
+        // Lock fast non-thinking model in prefs so AgentService never truncates JSON!
+        val prefs = service.getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+        if (prefs.getString("lastFastModel", "") == "gemini-2.5-flash") {
+            prefs.edit().putString("lastFastModel", "gemini-2.5-flash-lite").apply()
+        }
+
         val audio = service.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
 
-        // 1. Instant Offline Math Reflex
+        // 1. Instant Math Calculator
         if (g.contains("kitna") || g.contains("calculate") || g.contains("hisab") || Regex("""\d+\s*[+\-*/×÷]\s*\d+""").containsMatchIn(g)) {
             tryOfflineMath(g)?.let { ans ->
                 service.speakOut("Jawab hai $ans")
@@ -66,7 +171,93 @@ object YantraBrain {
             }
         }
 
+        // 2. Smart Direct Question Answering (Fixes ChatGPT/Google/YouTube jumping bug!)
+        val isQuestionIntent = listOf(
+            "kon sa", "kaun sa", "कौन सा", "kya hai", "kya h", "क्या है",
+            "batao", "बताओ", "kab aaya", "sabse naya", "सबसे नया", "latest episode",
+            "naya episode kon", "naya episode kaun", "kisne", "kahan", "price kya", "rate kya"
+        ).any { g.contains(it) }
+        val hasActionVerb = listOf(
+            "chalao", "chala do", "चलाओ", "play karo", "play", "kholo", "खोलो", "open", "send", "bhejo", "call"
+        ).any { g.contains(it) }
+
+        if (isQuestionIntent && !hasActionVerb) {
+            activeBrainJob?.cancel()
+            activeBrainJob = brainScope.launch {
+                updateFloatingStatus(service, "🔍 Google Search se sahi jawab dhoondh raha hoon...")
+                service.speakOut("Ek second, sahi jankari dhoondh raha hoon")
+                val answer = askGeminiWithGoogleSearch(service, g)
+                service.speakOut(answer)
+                service.stopAgent("🧠 $answer")
+            }
+            return true
+        }
+
+        // 3. Smart Single-Shot YouTube Player (Searches ONCE, skips Ads, plays & speaks title!)
+        if ((g.contains("youtube") || g.contains("यूट्यूब") || g.contains("episode") || g.contains("song") || g.contains("गाना") || g.contains("video")) &&
+            (g.contains("chala") || g.contains("चला") || g.contains("play") || g.contains("search") || g.contains("लगाओ"))) {
+            val rawQuery = g.replace("youtube par", "").replace("यूट्यूब पर", "").replace("youtube", "").replace("यूट्यूब", "")
+                .replace("chalao", "").replace("chala do", "").replace("चलाओ", "").replace("play karo", "").replace("play", "")
+                .replace("search karo", "").replace("लगाओ", "").trim()
+            if (rawQuery.length >= 2) {
+                activeBrainJob?.cancel()
+                activeBrainJob = brainScope.launch {
+                    var finalSearch = rawQuery
+                    if (rawQuery.contains("naya episode") || rawQuery.contains("latest")) {
+                        updateFloatingStatus(service, "🔍 Sabse naye episode ka naam pata kar raha hoon...")
+                        val info = askGeminiWithGoogleSearch(service, "$rawQuery exact title")
+                        if (info.length in 4..90 && !info.contains("busy")) finalSearch = "$rawQuery"
+                    }
+                    updateFloatingStatus(service, "▶️ YouTube par '$finalSearch' chala raha hoon...")
+                    service.speakOut("YouTube par $rawQuery chala raha hoon")
+                    service.fireDirectIntent("youtube_search", finalSearch)
+                    delay(2400)
+                    val dm = service.resources.displayMetrics
+                    val hit = findBestNonAdYouTubeVideo(service.rootInActiveWindow, dm.heightPixels)
+                    if (hit != null) {
+                        tapScreen(service, hit.first.first, hit.first.second)
+                        delay(400)
+                        service.speakOut("Chala diya hai: ${hit.second}")
+                        service.stopAgent("▶️ Playing: ${hit.second}")
+                    } else {
+                        service.stopAgent("▶️ YouTube Search: '$finalSearch' khul gaya!")
+                    }
+                }
+                return true
+            }
+        }
+
+        // 4. Instant Hardware & System Controls
         when {
+            g.contains("alarm") || g.contains("अलार्म") -> {
+                try {
+                    val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+                        putExtra(AlarmClock.EXTRA_MESSAGE, "Yantra Alarm")
+                        putExtra(AlarmClock.EXTRA_HOUR, 7)
+                        putExtra(AlarmClock.EXTRA_MINUTES, 0)
+                        putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    service.startActivity(intent)
+                    service.speakOut("Alarm set kar diya hai")
+                    service.stopAgent("⏰ Alarm Set!")
+                    return true
+                } catch (e: Exception) {}
+            }
+            g.contains("timer") || g.contains("टाइमर") -> {
+                try {
+                    val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
+                        putExtra(AlarmClock.EXTRA_LENGTH, 300)
+                        putExtra(AlarmClock.EXTRA_MESSAGE, "Yantra Timer")
+                        putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    service.startActivity(intent)
+                    service.speakOut("Timer laga diya hai")
+                    service.stopAgent("⏱️ Timer Started!")
+                    return true
+                } catch (e: Exception) {}
+            }
             g.contains("battery") || g.contains("storage") || g.contains("ram kitn") || g.contains("स्टोरेज") || g.contains("बैटरी") -> {
                 if (!g.contains("setting") && !g.contains("khol") && !g.contains("open")) {
                     val report = service.getRedmiPhoneStatus(true)
@@ -160,15 +351,6 @@ object YantraBrain {
                     return true
                 }
             }
-            (g.contains("youtube par ") || g.contains("यूट्यूब पर ")) && (g.contains("search") || g.contains("chala") || g.contains("play") || g.contains("चलाओ")) -> {
-                val q = g.replace("youtube par", "").replace("यूट्यूब पर", "").replace("search karo", "").replace("chalao", "").replace("chala do", "").replace("play karo", "").replace("चलाओ", "").trim()
-                if (q.length >= 2) {
-                    service.fireDirectIntent("youtube_search", q)
-                    service.speakOut("YouTube par $q khol diya hai")
-                    service.stopAgent("▶️ YouTube Search: '$q'")
-                    return true
-                }
-            }
             (g.contains("google par ") || g.contains("गूगल पर ")) && g.contains("search") -> {
                 val q = g.replace("google par", "").replace("गूगल पर", "").replace("search karo", "").replace("search", "").trim()
                 if (q.length >= 2) {
@@ -182,11 +364,6 @@ object YantraBrain {
                 service.openRedmiSetting(g)
                 service.speakOut("Setting khol di hai")
                 service.stopAgent("⚙️ Setting Opened!")
-                return true
-            }
-            g.contains("clear cache") || g.contains("boost speed") -> {
-                service.speakOut("Yantra cache aur memory optimize ho gayi hai")
-                service.stopAgent("⚡ Memory & Cache Optimized!")
                 return true
             }
         }
@@ -234,18 +411,27 @@ object YantraBrain {
         aiAppsOnPhone: String, installedApps: String, vaultSummary: String,
         latestNotif: String, historyStr: String, failedStr: String, stuckCount: Int, screen: String
     ): String {
+        if (goal != lastGoalTracked) {
+            lastGoalTracked = goal
+            stepHistory.clear()
+        }
+        val screenTop = screen.lines().take(3).joinToString(" ")
+        stepHistory.add("Step${stepHistory.size + 1}($screenTop)")
+        if (stepHistory.size > 8) stepHistory.removeAt(0)
+
         return """
             Yantra AI ($BRAIN_VERSION) on Redmi Note 10S (${dmWidth}x${dmHeight}).
-            STATUS: $redmiStatus | TIME: $nowTime
-            GOAL: "$goal" | $corr
-            FACTS: "$researchedInfo" | NOTES: "$notesSoFar"
-            AI_APPS: $aiAppsOnPhone | APPS: $installedApps
-            HISTORY: $historyStr | FAILED: $failedStr
-            SCREEN:
+            GOAL: "$goal"
+            STEPS_TAKEN_SO_FAR: ${stepHistory.joinToString(" -> ")}
+            SCREEN_NODES:
             $screen
 
-            Return ONLY valid JSON (chain 2-4 steps for speed):
-            {"chosen_button_info":"...","next_step_plan":"...","save_note":"...","speak":"short Hindi","steps":[{"action":"open_app|type|click|open_setting|direct_intent|scroll_down|scroll_up|system_control|back|home","id":1,"x":540,"y":300,"app_name":"...","target":"...","text":"...","press_enter":true,"reason":"..."}]}
+            STRICT RULES (OUTPUT UNDER 90 TOKENS SO JSON NEVER TRUNCATES):
+            1. If a permission/dialog button ('Allow', 'While using the app', 'Continue', 'Skip', 'Not now', 'OK', 'अनुमति दें') is on screen, click it FIRST.
+            2. NEVER repeat a search or click if STEPS_TAKEN_SO_FAR shows you already searched!
+            3. If the goal is complete or video/screen is open, return: {"action":"done","message":"Kaam poora ho gaya"}
+            4. Otherwise return ONLY 1 short JSON step:
+            {"steps":[{"action":"open_app|type|click|scroll_down|back|home","id":1,"x":540,"y":300,"app_name":"...","target":"...","text":"...","press_enter":true}]}
         """.trimIndent()
     }
 }
