@@ -8,7 +8,7 @@ import java.util.Date
 import java.util.Locale
 
 object YantraBrain {
-    const val BRAIN_VERSION = "28.1-OMEGA-MODULAR"
+    const val BRAIN_VERSION = "28.2-OMEGA-MODULAR"
 
     val extraAppAliases = mapOf(
         "studio" to "com.google.android.apps.youtube.creator",
