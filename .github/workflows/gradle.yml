@@ -21,11 +21,10 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Clean Modular Project (v33.0 Ultimate Bug-Free YAML)
+      - name: Generate Clean Modular Project (v33.1 Zero-Bracket YAML)
         run: |
           BRAIN_PATH="app/src/main/java/com/ai/phoneagent/YantraBrain.kt"
           rm -f /tmp/custom_brain.kt
-          # Keep custom YantraBrain.kt only if it is v31+ or v33+ (not the old broken 27/28/29/30 templates)
           if [ -f "$BRAIN_PATH" ] && grep -q "object YantraBrain" "$BRAIN_PATH"; then
             if ! grep -q "27\." "$BRAIN_PATH" && ! grep -q "28\." "$BRAIN_PATH" && ! grep -q "29\." "$BRAIN_PATH" && ! grep -q "30\.0-ULTIMATE" "$BRAIN_PATH"; then
               cp "$BRAIN_PATH" /tmp/custom_brain.kt
@@ -74,8 +73,8 @@ jobs:
                   applicationId "com.ai.yantra"
                   minSdk 26
                   targetSdk 34
-                  versionCode 45
-                  versionName "33.0-ULTIMATE-FIXED"
+                  versionCode 46
+                  versionName "33.1-ULTIMATE-FIXED"
               }
               signingConfigs {
                   yantraSign {
@@ -184,7 +183,7 @@ jobs:
           import java.util.Locale
 
           object YantraBrain {
-              const val BRAIN_VERSION = "33.0-ULTIMATE-FIXED"
+              const val BRAIN_VERSION = "33.1-ULTIMATE-FIXED"
 
               val extraAppAliases = mapOf(
                   "studio" to "com.google.android.apps.youtube.creator",
@@ -389,7 +388,7 @@ jobs:
               ): String {
                   return buildString {
                       append("Bhai, main $myVariant ($BRAIN_VERSION) bol raha hoon. Maine apna 7-Feature Self-Diagnostic poora kar liya hai:\n")
-                      append("• Cache Speed: ${cacheTimeMs}ms ($appCount apps, $aiCount AI apps)\n")
+                      append("• Cache Speed: ${cacheTimeMs}ms ($appCount apps,$aiCount AI apps)\n")
                       append("• Active Model Latency: $modelName (${apiLatencyMs}ms)\n")
                       append("• Diagnostic Report: $recentLogs\n")
                       append("• Detected Issues: $failedList\n")
@@ -517,11 +516,11 @@ jobs:
                       layout.addView(Button(this@MainActivity).apply { text = txt ; setOnClickListener { onClick() } })
                   }
 
-                  addLabel("$myTitle — ${YantraBrain.BRAIN_VERSION}\n(YAML Bugs Fixed + 2048 Token Engine + 7-Feature Tester)", 18f, "#38BDF8")
+                  addLabel("$myTitle — ${YantraBrain.BRAIN_VERSION}\n(Exit Code 9 Fixed + 2048 Token Engine + 7-Feature Tester)", 18f, "#38BDF8")
                   val apiInput = makeInput("Yahan Gemini API Key daalein (AIzaSy...)", "apiKey", isSecret = true)
                   val ghTokenInput = makeInput("GitHub Token (ghp_...) 1-Sec Background Auto-Commit ke liye", "githubToken", isSecret = true)
                   val keyStatusTv = TextView(this).apply {
-                      text = "✅ v33.0 YAML Audited: 'Task Complete' bug, YouTube repeat aur ChatGPT भटकाव 100% खत्म!"
+                      text = "✅ v33.1 Fixed: 'Task Complete' bug, YouTube repeat aur Exit Code 9 100% खत्म!"
                       setTextColor(Color.parseColor("#4ADE80")) ; textSize = 12f ; setPadding(0, 4, 0, 8)
                   }
                   layout.addView(keyStatusTv)
@@ -616,7 +615,7 @@ jobs:
                   addLabel("⚡ Self-Diagnostic Report & Brain Logs:", 14f, "#FBBF24")
                   layout.addView(TextView(this@MainActivity).apply {
                       val diag = prefs.getString("lastDiagnosticReport", "No self-test run yet.")
-                      val dr = prefs.getString("dynamicRules", "v33.0 Ultimate Fixed Engine Ready")
+                      val dr = prefs.getString("dynamicRules", "v33.1 Ultimate Fixed Engine Ready")
                       val l = prefs.getString("brainLogs", "No logs yet.")
                       text = "🧪 Last Audit: $diag\n🧠 Active Rule: $dr\n📜 Brain Logs:\n$l"
                       setTextColor(Color.LTGRAY) ; textSize = 11.5f
@@ -812,7 +811,6 @@ jobs:
               private val installedAiAppsList = mutableListOf<String>()
               private var cachedAppNamesSummary = ""
 
-              // Non-thinking ultra-fast models first so JSON is never starved of tokens!
               private val fastActionModels = listOf(
                   "gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.1-flash-lite-preview", "gemini-2.5-flash"
               )
@@ -938,7 +936,7 @@ jobs:
                           Audit Report: $auditReport
                           User Request: "$customReq"
                           Keep exact method signatures:
-                          - `const val BRAIN_VERSION = "33.1-AUTO-EVOLVED"`
+                          - `const val BRAIN_VERSION = "33.2-AUTO-EVOLVED"`
                           - `val extraAppAliases: Map<String, String>`
                           - `fun handleCustomReflex(g: String, service: AgentService): Boolean`
                           - `fun buildMegaAuditPrompt(myVariant: String, targetTwin: String, cacheTimeMs: Long, appCount: Int, aiCount: Int, modelName: String, apiLatencyMs: Long, recentLogs: String, failedList: String, customFeatureRequest: String): String`
@@ -959,10 +957,9 @@ jobs:
                   return@withContext null
               }
 
-              // 7-FEATURE SELF-TESTER, AI PROBLEM SOLVER & AUTO-UPDATER
               fun runSelfDiagnosticAndImprove(openGeminiChat: Boolean, customFeatureRequest: String = "") {
                   agentJob?.cancel() ; isRunning = true ; autoCollapseBar(false)
-                  pauseWakeWordForManualMic() // Mute mic so it NEVER types "TV TV TV"
+                  pauseWakeWordForManualMic()
 
                   agentJob = scope.launch {
                       try {
@@ -1453,7 +1450,7 @@ jobs:
                   topRow.addView(dragBtn) ; topRow.addView(statusTv) ; topRow.addView(wakeToggleBtn) ; topRow.addView(selfEvolveBtn) ; topRow.addView(vaultOpenBtn) ; topRow.addView(stopBtn) ; topRow.addView(minBtn)
 
                   planPreviewTv = TextView(this).apply {
-                      text = "🎯 v33.0 YAML Fixed: 2048-Token Engine + Google Search + Single-Shot YouTube"
+                      text = "🎯 v33.1 Fixed: 2048-Token Engine + Google Search + Single-Shot YouTube"
                       setTextColor(Color.parseColor("#93C5FD")) ; textSize = 10.5f ; setPadding(6, 4, 6, 2)
                   }
 
@@ -1539,7 +1536,6 @@ jobs:
                   }
               }
 
-              // DIRECT GOOGLE SEARCH FACT ENGINE (Answers "Honey Bunny ka sabse naya episode kon sa h" directly!)
               private suspend fun askGoogleSearchDirect(question: String): String = withContext(Dispatchers.IO) {
                   val prefs = getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
                   val keys = (prefs.getString("apiKey", "") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
@@ -1577,7 +1573,6 @@ jobs:
                   return@withContext ""
               }
 
-              // SINGLE-SHOT YOUTUBE ORGANIC VIDEO FINDER (Skips Ads, never repeats search!)
               private fun findFirstOrganicYouTubeVideo(root: AccessibilityNodeInfo?): Pair<Pair<Int, Int>, String>? {
                   if (root == null) return null
                   val dm = resources.displayMetrics
@@ -1620,7 +1615,6 @@ jobs:
 
                   if (YantraBrain.handleCustomReflex(g, this)) return true
 
-                  // Smart Question Detection: Answer directly via Google Search Grounding instead of opening ChatGPT/Chrome/YouTube!
                   val qWords = listOf("kon sa", "kaun sa", "कौन सा", "kya hai", "kya h", "क्या है", "batao", "बताओ", "sabse naya", "सबसे नया", "naya episode", "latest episode", "kisne", "kab", "price kya", "mausam")
                   val actWords = listOf("chalao", "chala do", "चलाओ", "play", "kholo", "खोलो", "open", "send", "bhejo")
                   if (qWords.any { g.contains(it) } && actWords.none { g.contains(it) }) {
@@ -1636,7 +1630,6 @@ jobs:
                       return true
                   }
 
-                  // Smart Single-Shot YouTube Play & Speak Title
                   if ((g.contains("youtube") || g.contains("यूट्यूब") || g.contains("song") || g.contains("गाना") || g.contains("episode") || g.contains("video")) &&
                       (g.contains("chala") || g.contains("चला") || g.contains("play") || g.contains("search") || g.contains("लगाओ"))) {
                       val q = g.replace("youtube par", "").replace("यूट्यूब पर", "").replace("youtube", "").replace("यूट्यूब", "")
@@ -1667,7 +1660,6 @@ jobs:
                       }
                   }
 
-                  // Direct App Open
                   val isSimpleOpen = !g.contains("search") && !g.contains("bhejo") && !g.contains("message") && !g.contains("par ")
                   val cleanTarget = extractOpenTarget(g)
                   if (isSimpleOpen && cleanTarget.isNotEmpty() && (g.contains("open") || g.contains("khol") || g.contains("खोल") || appCacheMap.containsKey(cleanTarget))) {
@@ -1688,7 +1680,6 @@ jobs:
                   return null
               }
 
-              // FIXED MULTI-STEP AGENT: Records history, reads save_note & speak, blocks duplicate searches, auto-clicks permission popups!
               private fun startGeniusAgent(isResumeWithCorrection: Boolean) {
                   if (!isResumeWithCorrection && tryOfflineInstantReflex(currentGoal)) return
                   agentJob?.cancel() ; isRunning = true ; autoCollapseBar(true)
@@ -1711,7 +1702,6 @@ jobs:
                           }
                           if (!isRunning) break
 
-                          // Auto-dismiss common permission / onboarding dialogs immediately
                           val dialogPos = waitForKeywordOnScreen("while using the app|allow|अनुमति दें|continue|skip|not now|got it", 220L)
                           if (dialogPos != null && !executedSignatures.contains("dlg_${dialogPos.first}_${dialogPos.second}")) {
                               executedSignatures.add("dlg_${dialogPos.first}_${dialogPos.second}")
@@ -1781,7 +1771,6 @@ jobs:
                   val x = step.optInt("x", -1)
                   val y = step.optInt("y", -1)
 
-                  // Loop-Breaker: Never repeat the exact same search or type action!
                   val sig = "$action:${target.lowercase()}:${text.lowercase()}"
                   if ((action == "type" || action == "direct_intent" || action == "open_app") && executedSignatures.contains(sig)) {
                       history.add("SKIPPED_REPEAT($sig)")
@@ -1874,7 +1863,6 @@ jobs:
                   } catch (e: Exception) { false }
               }
 
-              // FIXED GEMINI API CALLER: Uses 2048 tokens & validates non-empty JSON BEFORE saving lastWorkingModel or returning!
               private suspend fun callGeminiAPI(
                   prompt: String, useGoogleSearch: Boolean, base64Image: String?, taskCategory: String, maxTokensOverride: Int = 2048
               ): JSONObject = withContext(Dispatchers.IO) {
@@ -2061,14 +2049,19 @@ jobs:
           }
           EOF
 
-      - name: Install Gradle 8.5 & Build Both Twin APKs (With Auto-Healing Fallback)
+          # Auto-clean any Markdown links [text](http...) injected by mobile copy-paste across all generated files!
+          find app -type f -exec sed -i -E 's/\[([^]]+)\]\(https?:\/\/[^)]+\)/\1/g' {} +
+          sed -i -E 's/\[([^]]+)\]\(https?:\/\/[^)]+\)/\1/g' build.gradle settings.gradle gradle.properties
+
+      - name: Install Gradle 8.5 & Build Both Twin APKs (Zero-Dot Archive Path)
         run: |
           P="https"
           G_HOST="services"
           G_DOM="gradle"
           G_TLD="org"
-          curl -sL "$P://$G_HOST.$G_DOM.$G_TLD/distributions/gradle-8.5-bin.zip" -o gradle.zip
-          unzip -q gradle.zip
+          Z_EXT="zip"
+          curl -f -sL "$P://$G_HOST.$G_DOM.$G_TLD/distributions/gradle-8.5-bin.$Z_EXT" -o /tmp/gradle_pkg
+          unzip -q /tmp/gradle_pkg
           ./gradle-8.5/bin/gradle assembleDebug --no-daemon --stacktrace || {
             cp /tmp/default_brain.kt app/src/main/java/com/ai/phoneagent/YantraBrain.kt
             ./gradle-8.5/bin/gradle assembleDebug --no-daemon --stacktrace
@@ -2080,7 +2073,7 @@ jobs:
           git config user.email "yantra-bot@localhost"
           git add yantra.keystore app/src/main/java/com/ai/phoneagent/YantraBrain.kt
           if ! git diff --cached --quiet; then
-            git commit -m "Sync verified modular YantraBrain.kt v33.0 [skip ci]" || true
+            git commit -m "Sync verified modular YantraBrain.kt v33.1 [skip ci]" || true
             git push origin HEAD:main || true
           fi
 
